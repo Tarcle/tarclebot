@@ -71,7 +71,7 @@ async def on_message(message):
                         else: embed.title = weapon_type+'\n\n프레임'
                         embed.description = frame
                         fixed_value = []
-                        for perk in perks[:4]:
+                        for perk in perks[:5]:
                             li = perk.select('.item.show-hover:not(.random)')
                             if len(li)>0:
                                 alts = ''
