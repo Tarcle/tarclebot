@@ -18,7 +18,6 @@ async def on_ready():
     print('===============')
     await app.change_presence(game=discord.Game(name=command_head+'?', type=1))
 
-searching = list
 @app.event
 async def on_message(message):
     if message.author.bot:
@@ -30,7 +29,7 @@ async def on_message(message):
             await app.send_typing(message.channel)
             content = '{ch}검색 [장비 또는 속성 이름] : 장비 또는 속성 설명 검색\n'
             await app.send_message(message.channel, content.format(ch=command_head))
-        if command in ['검색']:
+        elif command in ['검색']:
             if len(msg)>=2:
                 await app.send_typing(message.channel)
                 search = msg[1:]
@@ -43,11 +42,12 @@ async def on_message(message):
                 content = '```'
                 i=1
                 for link in links[:5]:
-                    content += '.{} : '.format(i)+'-'.join(link.text.strip().split('-')[:2])+'\n'
+                    content += '.{} : '.format(i)+link.text.strip().split('-')[0]+'- '\
+                        +urllib.parse.unquote(link.get('href').split('/url?q=')[1].split('&')[0]).split('/')[6]+'\n'
                     i+=1
                 content += '```'
                 searchlist = await app.send_message(message.channel, content)
-                
+
                 msg = await app.wait_for_message(author=message.author, timeout=30)
                 if msg != None:
                     if msg.content.startswith('.'):
@@ -97,9 +97,9 @@ async def on_message(message):
                                 for alt in alts: frame += alt.get('alt')+' / '
                                 frame = frame[:-3]
                                 break
-                        if is_exotic: embed.title = weapon_type+'\n\n경이 본질'
-                        else: embed.title = weapon_type+'\n\n프레임'
-                        embed.description = frame
+                        if is_exotic: frame_title = '경이 본질'
+                        else: frame_title = '프레임'
+                        embed.add_field(name=frame_title, value=frame, inline=True)
                         fixed_value = []
                         for perk in perks[:5]:
                             li = perk.select('.item.show-hover:not(.random)')
@@ -126,7 +126,7 @@ async def on_message(message):
                                     for img in li:
                                         alt = img.select('img')[0].get('alt')
                                         if alt!=frame:
-                                            field_value += alt+' / '
+                                            field_value += alt+'\n'
                                     field_value = field_value[:-3]
                                     i+=1
                                     embed.add_field(name=field_name, value=field_value)
