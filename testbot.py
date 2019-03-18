@@ -42,8 +42,7 @@ async def on_message(message):
                 content = '```'
                 i=1
                 for link in links[:5]:
-                    content += '.{} : '.format(i)+link.text.strip().split('-')[0]+'- '\
-                        +urllib.parse.unquote(link.get('href').split('/url?q=')[1].split('&')[0]).split('/')[6]+'\n'
+                    content += '.{} : '.format(i)+'-'.join(link.text.strip().split('-')[:2])+'\n'
                     i+=1
                 content += '```'
                 searchlist = await app.send_message(message.channel, content)
