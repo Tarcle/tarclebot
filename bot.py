@@ -94,8 +94,7 @@ async def on_message(message):
                             alts = alt.select('img')
                             if len(alts)>0:
                                 frame = ''
-                                for alt in alts: frame += alt.get('alt')+' / '
-                                frame = frame[:-3]
+                                for alt in alts: frame += alt.get('alt')+'\n'
                                 break
                         if is_exotic: frame_title = '경이 본질'
                         else: frame_title = '프레임'
@@ -127,7 +126,6 @@ async def on_message(message):
                                         alt = img.select('img')[0].get('alt')
                                         if alt!=frame:
                                             field_value += alt+'\n'
-                                    field_value = field_value[:-3]
                                     i+=1
                                     embed.add_field(name=field_name, value=field_value)
                     else: #속성 설명 검색
