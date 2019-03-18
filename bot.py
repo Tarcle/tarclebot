@@ -39,7 +39,37 @@ async def on_message(message):
                 html = urllib.request.urlopen(req).read().decode('utf-8')
                 soup = BeautifulSoup(html, 'html.parser')
 
-                link = soup.select('div.g .r a')[0]
+                links = soup.select('div.g .r a')
+                content = '```'
+                i=1
+                for link in links[:5]:
+                    content += '.{} : '.format(i)+'-'.join(link.text.strip().split('-')[:2])+'\n'
+                    i+=1
+                content += '```'
+                searchlist = await app.send_message(message.channel, content)
+                
+                msg = await app.wait_for_message(author=message.author, timeout=30)
+                if msg != None:
+                    if msg.content.startswith('.'):
+                        msg = msg.content[1:]
+                        msg = msg.split(' ')[0]
+                        if msg.isdecimal() and 5>=int(msg) and int(msg)>=1:
+                            sel = int(msg)
+                        else:
+                            await app.delete_message(searchlist)
+                            await app.send_message(message.channel, '다시 시도해주세요.')
+                            return False
+                    else:
+                        await app.delete_message(searchlist)
+                        await app.send_message(message.channel, '다시 시도해주세요.')
+                        return False
+                else: #시간초과
+                    await app.delete_message(searchlist)
+                    await app.send_message(message.channel, '시간이 초과되었습니다. 다시 시도해주세요.')
+                    return False
+                await app.send_typing(message.channel)
+
+                link = links[sel-1]
                 title = link.text.strip()
                 href = urllib.parse.unquote(link.get('href').split('/url?q=')[1].split('&')[0])
 
@@ -103,8 +133,10 @@ async def on_message(message):
                     else: #속성 설명 검색
                         embed.title = weapon_type
                         embed.description = flavor
+                    await app.delete_message(searchlist)
                     await app.send_message(message.channel, embed=embed)
                 else:
+                    await app.delete_message(searchlist)
                     await app.send_message(message.channel, '검색에 실패했습니다. 자세하게 입력해주세요.')
             else:
                 await app.send_message(message.channel, '명령어는 {}도움말 로 확인해주세요'.format(command_head))
