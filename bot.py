@@ -79,54 +79,63 @@ async def on_message(message):
                 if len(soup.select('.item-header'))>0: #검색 성공
                     title = soup.select('.item-header .item-name h2')[0].text.strip()
                     weapon_type = soup.select('.item-header .weapon-type')[0].text.strip()
+                    is_exotic = weapon_type.startswith('경이')
+                    is_legend = weapon_type.startswith('전설')
                     img = soup.select('.item-header .bump img')[0].get('src')
-                    flavor = soup.select('.item-header .flavor-text > h4')[0].text
-                    embed = discord.Embed(title='', color=embed_color)
+                    flavor = soup.select('.item-header .flavor-text > h4')[0].text.strip()
+                    source_line = soup.select('.item-header .source-line')
+                    if len(source_line)>0: source_line = source_line[0].text.strip()
+                    else: source_line = ''
+                    embed = discord.Embed(title='더 자세히 보려면 여기를 클릭하세요.', description=flavor, url=href, color=embed_color)
                     embed.set_author(name=title, icon_url=img, url=href)
+                    embed.set_footer(text=source_line)
 
-                    perks = soup.select('#socket-container .perks .sockets')
-                    if len(perks)>0: #장비 속성 검색
-                        is_exotic = weapon_type.startswith('경이')
-                        is_legend = weapon_type.startswith('전설')
-                        embed.set_footer(text=flavor)
-                        for alt in perks:
-                            alts = alt.select('img')
-                            if len(alts)>0:
-                                frame = ''
-                                for alt in alts: frame += alt.get('alt')+'\n'
-                                break
+                    frames = soup.select('#socket-container .perks>.sockets')
+                    if len(frames)>0:
                         if is_exotic: frame_title = '경이 본질'
                         else: frame_title = '프레임'
+                        alts = frames[0].select('img')
+                        frame = ''
+                        if len(alts)>0:
+                            for alt in alts: frame += alt.get('alt')+'\n'
+                        else:
+                            alts = frames[1].select('img')
+                            for alt in alts: frame += alt.get('alt')+'\n'
                         embed.add_field(name=frame_title, value=frame, inline=True)
-                        fixed_value = []
-                        for perk in perks[:5]:
-                            li = perk.select('.item.show-hover:not(.random)')
-                            if len(li)>0:
-                                alts = ''
-                                for img in li:
-                                    alt = img.select('img')[0].get('alt')
-                                    if alt!=frame: alts += alt+' / '
-                                if len(alts)>0: fixed_value.append(alts[:-3])
-                        if is_exotic: field_name = '속성'
-                        elif is_legend: field_name = '걸작 속성'
-                        else: field_name = '고정 속성'
-                        embed.add_field(name=field_name, value='\n'.join(fixed_value), inline=False)
 
-                        perks = soup.select('#socket-container .perks .sockets li.random')
-                        # embed = discord.Embed(title='', color=embed_color)
-                        if len(perks)>0:
-                            i = 0
-                            for perk in perks:
-                                field_name = '랜덤 속성 '+str(i+1)
-                                field_value = ''
-                                li = perk.select('.item.show-hover.random')
+                        perks = soup.select('#socket-container .perks>.sockets+.sockets')
+                        if len(perks)>0: #장비 속성 검색
+                            if is_exotic: field_name = '속성'
+                            elif is_legend: field_name = '걸작 속성'
+                            else: field_name = '고정 속성'
+                            fixed_value = []
+                            if len(soup.select('.sockets .item.random'))>0: tmp = int(len(perks)/2)
+                            else: tmp = len(perks)
+                            for perk in perks[:tmp]:
+                                li = perk.select('.item.show-hover:not(.random)')
                                 if len(li)>0:
+                                    alts = ''
                                     for img in li:
                                         alt = img.select('img')[0].get('alt')
-                                        if alt!=frame:
-                                            field_value += alt+'\n'
-                                    i+=1
-                                    embed.add_field(name=field_name, value=field_value)
+                                        if alt!=frame: alts += alt+' / '
+                                    if len(alts)>0: fixed_value.append(alts[:-3])
+                            embed.add_field(name=field_name, value='\n'.join(fixed_value), inline=False)
+
+                            perks = soup.select('#socket-container .perks>.sockets li.random')
+                            # embed = discord.Embed(title='', color=embed_color)
+                            if len(perks)>0:
+                                i = 0
+                                for perk in perks:
+                                    field_name = '랜덤 속성 '+str(i+1)
+                                    field_value = ''
+                                    li = perk.select('.item.show-hover.random')
+                                    if len(li)>0:
+                                        for img in li:
+                                            alt = img.select('img')[0].get('alt')
+                                            if alt!=frame:
+                                                field_value += alt+'\n'
+                                        i+=1
+                                        embed.add_field(name=field_name, value=field_value)
                     else: #속성 설명 검색
                         embed.title = weapon_type
                         embed.description = flavor
