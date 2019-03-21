@@ -153,5 +153,22 @@ async def on_message(message):
                     await app.send_message(message.channel, '검색에 실패했습니다. 자세하게 입력해주세요.')
             else:
                 await app.send_message(message.channel, '명령어는 {}도움말 로 확인해주세요'.format(command_head))
+        elif command in ['미세먼지']:
+            await app.send_typing(message.channel)
+            if len(msg)>=2:
+                search = msg[1:]
+                search_ = urllib.parse.quote(' '.join(search)+'+미세먼지')
+                req = urllib.request.Request("https://search.naver.com/search.naver?query={}".format(search_), headers={'User-Agent': 'Mozilla/5.0'})
+                html = urllib.request.urlopen(req).read().decode('utf-8')
+                soup = BeautifulSoup(html, 'html.parser')
+                area = soup.select('#main_pack .main_select_tab .select_text')
+                air = soup.select('#main_pack .main_box.expand .state_info .main_figure')
+                if len(air)>0:
+                    await app.send_message(message.channel, '```md\n#{} 미세먼지\n>  {}㎍/㎥ ```'.format(area[0].text.strip(), air[0].text.strip()))
+                else:
+                    await app.send_message(message.channel, '``` 네이버가 이 지역을 찾을 수 없어요! ```')
+            # else:
+                #main_pack > div.content_search.section._atmospheric_environment > div > div.contents03_sub > div > div:nth-child(3) > div.main_box > div.detail_box > div.tb_scroll > table > tbody > tr:nth-child(1)
+
 
 app.run(token)
