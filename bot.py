@@ -16,7 +16,7 @@ async def on_ready():
     print(app.user.name)
     print(app.user.id)
     print('===============')
-    await app.change_presence(game=discord.Game(name=command_head+'?', type=1))
+    await app.change_presence(game=discord.Game(name='{ch}?, {ch}도움말'.format(ch=command_head), type=1))
 
 @app.event
 async def on_message(message):
@@ -27,7 +27,14 @@ async def on_message(message):
         command = msg[0][len(command_head):]
         if command in ['도움말', '?']:
             await app.send_typing(message.channel)
-            content = '{ch}검색 [장비 또는 속성 이름] : 장비 또는 속성 설명 검색\n'
+            content = '```md\n'+\
+                '# {ch}?, {ch}도움말\n'+\
+                '>   이 봇이 가진 명령어를 확인합니다.\n'+\
+                '# {ch}검색 [장비 또는 속성 이름] : 장비 또는 속성 설명 검색\n'+\
+                '>   1. 구글 검색으로 나오는 결과 5개 출력\n'+\
+                '>   2. 5개 중 원하는 내용 선택 ({ch}번호)\n'+\
+                '>   3. 내용 확인!\n'+\
+                '```'
             await app.send_message(message.channel, content.format(ch=command_head))
         elif command in ['검색']:
             if len(msg)>=2:
@@ -82,18 +89,24 @@ async def on_message(message):
                     is_exotic = weapon_type.startswith('경이')
                     is_legend = weapon_type.startswith('전설')
                     img = soup.select('.item-header .bump img')[0].get('src')
-                    flavor = soup.select('.item-header .flavor-text > h4')[0].text
-                    embed = discord.Embed(title='', color=embed_color)
+                    flavor = soup.select('.item-header .flavor-text > h4')[0].text.strip()
+                    source_line = soup.select('.item-header .source-line')
+                    if len(source_line)>0: source_line = source_line[0].text.strip()
+                    else: source_line = ''
+                    embed = discord.Embed(title='더 자세히 보려면 여기를 클릭하세요.', description=flavor, url=href, color=embed_color)
                     embed.set_author(name=title, icon_url=img, url=href)
+                    embed.set_footer(text=source_line)
 
-                    frames = soup.select('#socket-container .perks>div+.sockets')
+                    frames = soup.select('#socket-container .perks>.sockets')
                     if len(frames)>0:
                         if is_exotic: frame_title = '경이 본질'
                         else: frame_title = '프레임'
-                        embed.set_footer(text=flavor)
                         alts = frames[0].select('img')
+                        frame = ''
                         if len(alts)>0:
-                            frame = ''
+                            for alt in alts: frame += alt.get('alt')+'\n'
+                        else:
+                            alts = frames[1].select('img')
                             for alt in alts: frame += alt.get('alt')+'\n'
                         embed.add_field(name=frame_title, value=frame, inline=True)
 
@@ -103,7 +116,7 @@ async def on_message(message):
                             elif is_legend: field_name = '걸작 속성'
                             else: field_name = '고정 속성'
                             fixed_value = []
-                            if len(perks)>5: tmp = int(len(perks)/2)
+                            if len(soup.select('.sockets .item.random'))>0: tmp = int(len(perks)/2)
                             else: tmp = len(perks)
                             for perk in perks[:tmp]:
                                 li = perk.select('.item.show-hover:not(.random)')
