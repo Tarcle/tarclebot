@@ -93,7 +93,7 @@ async def on_message(message):
                     source_line = soup.select('.item-header .source-line')
                     if len(source_line)>0: source_line = source_line[0].text.strip()
                     else: source_line = ''
-                    embed = discord.Embed(title='더 자세히 보려면 여기를 클릭하세요.', description=flavor, url=href, color=embed_color)
+                    embed = discord.Embed(title='더 자세히 보려면 여기를 클릭하세요.', description=weapon_type+'\n\n'+flavor, url=href, color=embed_color)
                     embed.set_author(name=title, icon_url=img, url=href)
                     embed.set_footer(text=source_line)
 
