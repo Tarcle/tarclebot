@@ -1,27 +1,15 @@
-import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton
-from PyQt5.QtCore import QCoreApplication
+#https://public-api.tracker.gg/apex/v1/standard/profile/5/Tarcle
 
-class MyApp(QWidget):
-    def __init__(self):
-        super().__init__()
+import discord
+import urllib.request
+import urllib.parse
+from bs4 import BeautifulSoup
+import json
 
-        self.initUI()
+search = "Tarcle"
+req = urllib.request.Request("https://public-api.tracker.gg/apex/v1/standard/profile/5/"+search, headers={'User-Agent': 'Mozilla/5.0', 'TRN-Api-Key': '1e913677-7f9e-491d-b16b-fb097d0456ac'})
+html = urllib.request.urlopen(req).read().decode('utf-8')
+# soup = BeautifulSoup(html, 'html.parser')
 
-    def initUI(self):
-        btn = QPushButton('Quit', self)
-        btn.move(50, 50)
-        btn.resize(btn.sizeHint())
-        btn.clicked.connect(QCoreApplication.instance().quit)
-
-        self.setWindowTitle('My First Application')
-        self.move(300, 300)
-        self.resize(400, 200)
-        self.show()
-
-
-if __name__ == '__main__':
-
-    app = QApplication(sys.argv)
-    ex = MyApp()
-    sys.exit(app.exec_())
+data = json.loads(html)
+print(data)
