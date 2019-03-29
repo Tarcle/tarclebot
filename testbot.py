@@ -3,6 +3,7 @@ import discord
 import urllib.request
 import urllib.parse
 from bs4 import BeautifulSoup
+from discord.utils import get
 
 app = discord.Client()
 token = 'NTU1OTI1NzgxNjcxMzEzNDA4.D2yR3g._AMmQVmG0XmatsX0-bYQhmFlnIk'
@@ -51,7 +52,7 @@ async def bot_help(message):
         '>   이 봇이 가진 명령어를 확인합니다.\n'+\
         '# {ch}검색 [장비 또는 속성 이름] : 장비 또는 속성 설명 검색\n'+\
         '>   1. 구글 검색으로 나오는 결과 5개 출력\n'+\
-        '>   2. 5개 중 원하는 내용 선택 ({ch}번호)\n'+\
+        '>   2. 5개 중 원하는 내용 선택 (반응 클릭)\n'+\
         '>   3. 내용 확인!\n'+\
         '```'
     await app.send_message(message.channel, content.format(ch=command_head))
@@ -59,50 +60,41 @@ async def search_destiny2(message):
     msg = message.content.split(' ')
     if len(msg)>=2:
         await app.send_typing(message.channel)
+        perms = message.channel.permissions_for(message.channel.server.me)
+        if(not perms.add_reactions):
+            await app.send_message(message.channel, '관리자 권한 또는 반응 추가 권한이 있어야 가능합니다.')
+            return False
         search = msg[1:]
         search_ = urllib.parse.quote(' '.join(search))
         req = urllib.request.Request("https://www.google.com/search?q=light.gg+"+search_, headers={'User-Agent': 'Mozilla/5.0'})
         html = urllib.request.urlopen(req).read().decode('utf-8')
         soup = BeautifulSoup(html, 'html.parser')
 
+        emoji = ['1⃣', '2⃣', '3⃣', '4⃣', '5⃣']
+
+        #검색목록 출력
         links = soup.select('div.g .r a')
         content = '```'
-        i=1
+        i=0
         for link in links[:5]:
-            content += '.{} : '.format(i)+'-'.join(link.text.strip().split('-')[:2])+'\n'
+            content += '{} : '.format(emoji[i])+'-'.join(link.text.strip().split('-')[:2])+'\n'
             i+=1
         content += '```'
         searchlist = await app.send_message(message.channel, content)
 
-        # msg = await app.wait_for_message(author=message.author, timeout=30)
-        emoji = ['one','two','three','four','five']
-        emoji = app.get_all_emojis()
-        print(emoji)
-        # for e in emoji:
-        await app.add_reaction(searchlist, '1')
-        msg = await app.wait_for_reaction(user=message.author, message=searchlist, timeout=30)
-        if msg != None:
-            if msg.content.startswith('.'):
-                msg = msg.content[1:]
-                msg = msg.split(' ')[0]
-                if msg.isdecimal() and 5>=int(msg) and int(msg)>=1:
-                    print(msg)
-                    sel = int(msg)
-                else:
-                    await app.delete_message(searchlist)
-                    await app.send_message(message.channel, '다시 시도해주세요.')
-                    return False
-            else:
-                await app.delete_message(searchlist)
-                await app.send_message(message.channel, '다시 시도해주세요.')
-                return False
+        for e in emoji: await app.add_reaction(searchlist, e)
+        res = await app.wait_for_reaction(emoji, user=message.author, message=searchlist, timeout=30)
+        if res != None:
+            sel = emoji.index(res.reaction.emoji)
         else: #시간초과
-            await app.delete_message(searchlist)
             await app.send_message(message.channel, '시간이 초과되었습니다. 다시 시도해주세요.')
+            if(perms.administrator or perms.manage_emojis): await app.clear_reactions(searchlist)
+            else:
+                for e in emoji: await app.remove_reaction(searchlist, e, app.user)
             return False
-        await app.send_typing(message.channel)
 
-        link = links[sel-1]
+        await app.send_typing(message.channel)
+        link = links[sel]
         title = link.text.strip()
         href = urllib.parse.unquote(link.get('href').split('/url?q=')[1].split('&')[0])
 
