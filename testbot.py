@@ -3,7 +3,6 @@ import discord
 import urllib.request
 import urllib.parse
 from bs4 import BeautifulSoup
-from discord.utils import get
 
 app = discord.Client()
 token = 'NTU1OTI1NzgxNjcxMzEzNDA4.D2yR3g._AMmQVmG0XmatsX0-bYQhmFlnIk'
