@@ -38,7 +38,7 @@ class App(discord.Client):
                     elif message.author.id == 343569224700264448: #홍님
                         await message.channel.send("미니야 헤어지자")
                     else:
-                        chat = ["뭐","왜?","그만불러","뀨?","빵사올까?"]
+                        chat = ["응?","왜?","왜불러!","뀨?","빵사올까?","얼마면돼","아잉~ 부끄러웡","뭐야 넌 주인님이 아니잖아?","누구세요?","아뇨~ 뚱인데요!"]
                         await message.channel.send(chat[int(random.random()*len(chat))])
 
 bot = App()
