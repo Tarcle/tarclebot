@@ -1,1 +1,4 @@
 /.vscode
+manifest.*
+MANZIP
+world_sql_content_*

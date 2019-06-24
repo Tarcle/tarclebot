@@ -41,7 +41,17 @@ class App(discord.Client):
                         await message.channel.send('관리자 권한 또는 반응 추가 권한이 있어야 가능합니다.')
                         return None
                     search = urllib.parse.quote(' '.join(msg[1:]))
-                    req = urllib.request.Request("https://www.google.com/search?q=light.gg+"+search, headers={'User-Agent': 'Mozilla/5.0'})
+                    #: 검색조건 설정
+                    values = {
+                        'q': 'light.gg'+search, # 검색할 내용
+                        'oq': 'light.gg'+search,
+                        'aqs': 'chrome..69i57.35694j0j7',
+                        'sourceid': 'chrome',
+                        'ie': 'UTF-8',
+                    }
+
+                    query_string = urllib.parse.urlencode(values)
+                    req = urllib.request.Request("https://www.google.com/search?" + query_string, headers={'User-Agent': 'Mozilla/5.0'})
                     html = urllib.request.urlopen(req).read().decode('utf-8')
                     soup = BeautifulSoup(html, 'html.parser')
 
