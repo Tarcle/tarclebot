@@ -39,12 +39,16 @@ class App(discord.Client):
                 if command in ['도움말', '명령어']:
                     content = '```md\n'+\
                         '# {ch} 도움말, {ch} 명령어\n'+\
-                        '>   이 봇이 가진 명령어를 확인합니다.\n'+\
+                        '>   내가 할 줄 아는 걸 알려줘!\n\n'+\
+                        '# {ch} 스크림 멤버는 a b c d e f ...\n'+\
+                        '>   에이펙스 스크림을 할 때 팀을 나눠줄거야.\n\n'+\
+                        '# {ch} 주사위\n'+\
+                        '>   주사위가 없는 너희를 위해 내가 대신 굴려줄게! (1~100)'+\
                         '```'
                     await message.channel.send(content.format(ch=prefix))
                 elif command == '스크림':
                     if len(msg) < 3:
-                        await message.channel.send('멤버는요? (명령어 : 털남아 스크림 멤버는 a b c d e f ...')
+                        await message.channel.send('멤버도 말해줘! (명령어 : 털남아 스크림 멤버는 a b c d e f ...')
                         return False
                     elif msg[2] == '멤버는':
                         members = msg[3:]
@@ -72,6 +76,8 @@ class App(discord.Client):
                         for i in range(len(res)):
                             embed.add_field(name='{}팀'.format(i+1), value='\n'.join(res[i]))
                         await message.channel.send(embed=embed)
+                elif command == '주사위':
+                    await message.channel.send(random.random(1, 101))
 
 bot = App()
 bot.run('NTgxMDA3NjYwMDI4MjY0NDU5.XOZBLQ.yXtwYxk9Mk3-zXbBbAVKu4hKb2g')
