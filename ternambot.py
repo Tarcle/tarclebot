@@ -77,7 +77,7 @@ class App(discord.Client):
                             embed.add_field(name='{}팀'.format(i+1), value='\n'.join(res[i]))
                         await message.channel.send(embed=embed)
                 elif command == '주사위':
-                    await message.channel.send(random.random(1, 101))
+                    await message.channel.send('```\n내가 주사위를 대신 굴려줄게!\n두구두구두구두구x100\n\n짜잔! {}의 주사위는 {}!!!\n```'.format(message.author, random.randrange(1, 101)))
 
 bot = App()
 bot.run('NTgxMDA3NjYwMDI4MjY0NDU5.XOZBLQ.yXtwYxk9Mk3-zXbBbAVKu4hKb2g')
