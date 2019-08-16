@@ -68,6 +68,7 @@ class App(discord.Client):
                     soup = BeautifulSoup(html, 'html.parser')
 
                     avatar = soup.select('.avatar>img')[0].get('src')
+                    if avatar.startswith('/'): avatar = 'https://scoresaber.com'+avatar
                     country = 'https://scoresaber.com'+soup.select('.title>img')[0].get('src')
                     name = soup.select('.title')[0].text.strip()
                     info = soup.select('.column>ul>li')
