@@ -82,7 +82,19 @@ class App(discord.Client):
                     soup = BeautifulSoup(html, 'html.parser')
 
                     embed = createProfile(soup, href)
+                    embed.set_footer(text="내정보로 등록하시려면 {prefix}등록 을 입력해주세요.".format(prefix=prefix))
                 await message.channel.send(embed=embed)
+                
+                # 내정보 등록
+                def save_profile(message): return message.content.strip() == "{prefix}등록".format(prefix=prefix)
+                try:
+                    res = await self.wait_for('message', check=save_profile)
+                except asyncio.TimeoutError: #시간초과
+                    return False
+
+                rankid = players[sel].select('.player>a')[0].get('href').strip()[3:]
+                if saveProfile(message.author.id, rankid):
+                    await message.channel.send('내정보 등록이 완료되었습니다.')
             elif command in ['랭킹', '순위', '탑텐', 'top10', 'rank']:
                 async with message.channel.typing():
                     country = urllib.parse.quote(' '.join(msg[1:]))
@@ -123,24 +135,16 @@ class App(discord.Client):
                         sel = emoji_num.index(res[0].emoji)
             elif command in ['내정보']:
                 if len(msg) > 1 and msg[1] in ['등록']:
-                    async with message.channel.typing():
-                        if len(msg) > 2:
-                            uid = str(message.author.id)
+                    if len(msg) > 2:
+                        async with message.channel.typing():
+                            uid = message.author.id
                             rankid = msg[2]
-                            db_delete('quicks', 'uid = %s', uid)
-                            db_insert('quicks', 'uid, rankid', (uid, rankid))
+                            saveProfile(uid, rankid)
 
-                    await message.channel.send('내정보 등록이 완료되었습니다.')
+                        await message.channel.send('내정보 등록이 완료되었습니다.')
                 else:
                     async with message.channel.typing():
-                        conn = pymysql.connect(host=mysql_host, user=mysql_user, password=mysql_password, db=mysql_database, charset=mysql_charset)
-                        curs = conn.cursor(pymysql.cursors.DictCursor)
-                        
-                        sql = "SELECT * FROM quicks WHERE uid={}".format(message.author.id)
-                        curs.execute(sql)
-                        rows = curs.fetchall()
-                        
-                        conn.close()
+                        rows = db_select('quicks', '*', 'uid='+str(message.author.id))
 
                         if len(rows) > 0:
                             href = 'https://scoresaber.com/u/'+rows[0]['rankid']
@@ -156,6 +160,35 @@ class App(discord.Client):
             elif command in ['dm']:
                 dm = await message.author.create_dm()
                 await dm.send('test')
+
+def saveProfile(uid, rankid):
+    if db_select('quicks', 'count(*) as count', 'uid='+str(uid))[0]['count'] > 0:
+        db_update('quicks', 'uid='+str(uid), 'rankid='+rankid)
+    else:
+        db_insert('quicks', 'uid, rankid', (uid, rankid))
+    return True
+
+def createProfile(soup, href):
+    avatar = soup.select('.avatar>img')[0].get('src')
+    country = 'https://scoresaber.com'+soup.select('.title>img')[0].get('src')
+    name = soup.select('.title')[0].text.strip()
+    info = soup.select('.column>ul>li')
+    if len(soup.select('.avatar>center>img'))>0: del info[0]
+
+    rank_global = info[0].select('a')[0].text.strip()
+    rank_country = info[0].select('a')[1].text.strip()
+    columns = []
+    columns.append(info[1].text.split(':'))
+    columns.append(info[2].text.split(':'))
+    columns.append(info[3].text.split(':'))
+    columns.append(info[4].text.split(':'))
+
+    embed = discord.Embed(title='더 자세히 보려면 여기를 클릭하세요.', description='Player Ranking: {} - ( 국내 {} )'.format(rank_global, rank_country), url=href, color=embed_color)
+    embed.set_thumbnail(url=avatar)
+    embed.set_author(name=name, icon_url=country)
+    for column in columns:
+        embed.add_field(name=column[0].strip(), value=column[1].strip(), inline=False)
+    return embed
 
 def db_insert(table, columns, values):
     conn = pymysql.connect(host=mysql_host, user=mysql_user, password=mysql_password, db=mysql_database, charset=mysql_charset)
@@ -187,38 +220,16 @@ def db_delete(table, where, values):
 
     conn.close()
 
-def db_select(query):
+def db_select(table, select, where):
     conn = pymysql.connect(host=mysql_host, user=mysql_user, password=mysql_password, db=mysql_database, charset=mysql_charset)
     curs = conn.cursor(pymysql.cursors.DictCursor)
     
-    curs.execute(query)
+    curs.execute("select {} from {} where {}".format(select, table, where))
     rows = curs.fetchall()
     
     conn.close()
 
     return rows
-
-def createProfile(soup, href):
-    avatar = soup.select('.avatar>img')[0].get('src')
-    country = 'https://scoresaber.com'+soup.select('.title>img')[0].get('src')
-    name = soup.select('.title')[0].text.strip()
-    info = soup.select('.column>ul>li')
-    if len(soup.select('.avatar>center>img'))>0: del info[0]
-
-    rank_global = info[0].select('a')[0].text.strip()
-    rank_country = info[0].select('a')[1].text.strip()
-    columns = []
-    columns.append(info[1].text.split(':'))
-    columns.append(info[2].text.split(':'))
-    columns.append(info[3].text.split(':'))
-    columns.append(info[4].text.split(':'))
-
-    embed = discord.Embed(title='더 자세히 보려면 여기를 클릭하세요.', description='Player Ranking: {} - ( 국내 {} )'.format(rank_global, rank_country), url=href, color=embed_color)
-    embed.set_thumbnail(url=avatar)
-    embed.set_author(name=name, icon_url=country)
-    for column in columns:
-        embed.add_field(name=column[0].strip(), value=column[1].strip(), inline=False)
-    return embed
 
 bot = App()
 bot.run(token)
