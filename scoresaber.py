@@ -86,9 +86,9 @@ class App(discord.Client):
                 await message.channel.send(embed=embed)
                 
                 # 내정보 등록
-                def save_profile(message): return message.content.strip() == "{prefix}등록".format(prefix=prefix)
+                def save_profile(profile_message): return profile_message.author == message.author and profile_message.content.strip() == "{prefix}등록".format(prefix=prefix)
                 try:
-                    res = await self.wait_for('message', check=save_profile)
+                    res = await self.wait_for('message', timeout=30, check=save_profile)
                 except asyncio.TimeoutError: #시간초과
                     return False
 
