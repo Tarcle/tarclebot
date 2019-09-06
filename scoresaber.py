@@ -26,6 +26,7 @@ class App(discord.Client):
         print('다음으로 로그인합니다: {0}'.format(self.user))
         print('===============')
         # await self.change_presence(activity=discord.Game(name='{ch} 검색 [닉네임]'.format(ch=prefix), type=1))
+
     async def on_message(self, message):
         if message.author.bot:
             return None
@@ -33,8 +34,8 @@ class App(discord.Client):
             msg = message.content.split(' ')
             command = msg[0][len(prefix):]
             if command in ['검색', '전적', 'search']:
-                try: perms = message.channel.permissions_for(message.channel.guild.me)
-                except: None
+                if message.guild:
+                    perms = message.channel.permissions_for(message.guild.me)
                 search = urllib.parse.quote(' '.join(msg[1:]))
                 if len(search)==0:
                     return await message.channel.send('검색할 닉네임을 입력해주세요')
@@ -42,7 +43,7 @@ class App(discord.Client):
                     req = urllib.request.Request("https://scoresaber.com/global?search="+search, headers={'User-Agent': 'Mozilla/5.0'})
                     html = urllib.request.urlopen(req).read().decode('utf-8')
                     soup = BeautifulSoup(html, 'html.parser')
-                    
+
                     sel = -1
                     #검색목록 출력
                     players = soup.select('.ranking>.ranking>tbody>tr')
@@ -73,7 +74,7 @@ class App(discord.Client):
                         return False
                     else:
                         sel = emoji_num.index(res[0].emoji)
-                
+
                 #페이지 이동
                 async with message.channel.typing():
                     href = 'https://scoresaber.com'+players[sel].select('.player>a')[0].get('href')
@@ -84,7 +85,7 @@ class App(discord.Client):
                     embed = createProfile(soup, href)
                     embed.set_footer(text="내정보로 등록하시려면 {prefix}등록 을 입력해주세요.".format(prefix=prefix))
                 await message.channel.send(embed=embed)
-                
+
                 # 내정보 등록
                 def save_profile(profile_message): return profile_message.author == message.author and profile_message.content.strip() == "{prefix}등록".format(prefix=prefix)
                 try:
@@ -175,11 +176,12 @@ def createProfile(soup, href):
     country = 'https://scoresaber.com'+soup.select('.title>img')[0].get('src')
     name = soup.select('.title')[0].text.strip()
     info = soup.select('.column>ul>li')
-    if len(info[0].select('a')) == 0: del info[0]
+    if len(info[0].select('a')) == 0:
+        del info[0]
 
     rank_global = info[0].select('a')[0].text.strip()
     rank_country = info[0].select('a')[1].text.strip()
-    columns = []
+    columns = list()
     columns.append(info[1].text.split(':'))
     columns.append(info[2].text.split(':'))
     columns.append(info[3].text.split(':'))
@@ -197,8 +199,7 @@ def db_insert(table, columns, values):
     curs = conn.cursor()
 
     tmp = "%s"
-    for i in values[1:]:
-        tmp += ", %s"
+    tmp += ", %s" * (len(values)-1)
     curs.execute("insert into {}({}) values ({})".format(table, columns, tmp), values)
     conn.commit()
 
@@ -225,10 +226,10 @@ def db_delete(table, where, values):
 def db_select(table, select, where):
     conn = pymysql.connect(host=mysql_host, user=mysql_user, password=mysql_password, db=mysql_database, charset=mysql_charset)
     curs = conn.cursor(pymysql.cursors.DictCursor)
-    
+
     curs.execute("select {} from {} where {}".format(select, table, where))
     rows = curs.fetchall()
-    
+
     conn.close()
 
     return rows
