@@ -51,7 +51,7 @@ class App(discord.Client):
                     if len(players) == 1:
                         sel = 0
                     else:
-                        content = '```py\n'
+                        content = '```cs\n'
                         for i in range(min(5, len(players))):
                             player = players[i].select('.player>a>.pp')[0]
                             rank = players[i].select('.rank')[0]
@@ -84,7 +84,12 @@ class App(discord.Client):
 
                     embed = createProfile(soup, href)
                     embed.set_footer(text="내정보로 등록하시려면 {prefix}등록 을 입력해주세요.".format(prefix=prefix))
-                await message.channel.send(embed=embed)
+                await searchlist.edit(content="", embed=embed)
+
+                if(perms.manage_emojis):
+                    await searchlist.clear_reactions()
+                else:
+                    for e in emoji_num: await searchlist.remove_reaction(e, self.user)
 
                 # 내정보 등록
                 def save_profile(profile_message): return profile_message.author == message.author and profile_message.content.strip() == "{prefix}등록".format(prefix=prefix)
@@ -155,12 +160,20 @@ class App(discord.Client):
 
                             embed = createProfile(soup, href)
                     if len(rows) > 0:
-                        await message.channel.send(embed=embed)
+                        await message.channel.send(embeds=embed)
                     else:
                         await message.channel.send('등록된 계정이 없습니다. [{}내정보 등록]을 먼저 실행해주세요.'.format(prefix))
-            elif command in ['dm']:
-                dm = await message.author.create_dm()
-                await dm.send('test')
+            #나만
+            elif message.author.id == 361018280569470986:
+                if command in ['dm']:
+                    dm = await message.author.create_dm()
+                    await dm.send('test')
+                elif command in ['v']:
+                    if message.author.voice == None:
+                        return await message.channel.send('먼저 음성 채널에 입장해주세요.')
+                    voice = message.author.voice.channel
+                    vc = await voice.connect()
+                    vc.play()
 
 def saveProfile(uid, rankid):
     if db_select('quicks', 'count(*) as count', 'uid='+str(uid))[0]['count'] > 0:
