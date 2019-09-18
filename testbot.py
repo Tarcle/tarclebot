@@ -86,7 +86,7 @@ class App(discord.Client):
                     embed.set_footer(text="내정보로 등록하시려면 {prefix}등록 을 입력해주세요.".format(prefix=prefix))
                 await searchlist.edit(content="", embed=embed)
 
-                if(perms.manage_emojis):
+                if(perms.manage_messages):
                     await searchlist.clear_reactions()
                 else:
                     for e in emoji_num: await searchlist.remove_reaction(e, self.user)
