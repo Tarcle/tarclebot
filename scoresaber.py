@@ -22,6 +22,7 @@ mysql_password = 'cjc!40812848'
 mysql_database = 'scoresaber'
 mysql_charset = 'utf8'
 
+
 class App(discord.Client):
     async def on_ready(self):
         print('다음으로 로그인합니다: {0}'.format(self.user))
@@ -36,10 +37,11 @@ class App(discord.Client):
             command = msg[0][len(prefix):]
             if command in ['검색', '전적', 'search']:
                 search = urllib.parse.quote(' '.join(msg[1:]))
-                if len(search)==0:
+                if len(search) == 0:
                     return await message.channel.send('검색할 닉네임을 입력해주세요')
                 async with message.channel.typing():
-                    req = urllib.request.Request("https://scoresaber.com/global?search="+search, headers={'User-Agent': 'Mozilla/5.0'})
+                    req = urllib.request.Request(
+                        "https://scoresaber.com/global?search="+search, headers={'User-Agent': 'Mozilla/5.0'})
                     html = urllib.request.urlopen(req).read().decode('utf-8')
                     soup = BeautifulSoup(html, 'html.parser')
 
@@ -55,7 +57,8 @@ class App(discord.Client):
                             player = players[i].select('.player>a>.pp')[0]
                             rank = players[i].select('.rank')[0]
                             pp = players[i].select('.ppValue')[0]
-                            content += '{} : {} ( {} ) - {}\n'.format(i+1, player.text.strip(), pp.text.strip(), rank.text.strip())
+                            content += '{} : {} ( {} ) - {}\n'.format(
+                                i+1, player.text.strip(), pp.text.strip(), rank.text.strip())
                         content += '```'
                         searchlist = await message.channel.send(content)
                 else:
@@ -63,11 +66,14 @@ class App(discord.Client):
 
                 #이모지 추가
                 if sel < 0:
-                    for e in emoji_num[:min(5, len(players))]: await searchlist.add_reaction(e)
-                    def check_num(reaction, user): return user == message.author and str(reaction.emoji) in emoji_num
+                    for e in emoji_num[:min(5, len(players))]:
+                        await searchlist.add_reaction(e)
+
+                    def check_num(reaction, user): return user == message.author and str(
+                        reaction.emoji) in emoji_num
                     try:
                         res = await self.wait_for('reaction_add', timeout=30, check=check_num)
-                    except asyncio.TimeoutError: #시간초과
+                    except asyncio.TimeoutError:  # 시간초과
                         await searchlist.edit(content="시간이 초과되었습니다. 다시 시도해주세요.")
                         await clear_reactions(searchlist)
                         return False
@@ -76,13 +82,16 @@ class App(discord.Client):
 
                 #페이지 이동
                 async with message.channel.typing():
-                    href = 'https://scoresaber.com'+players[sel].select('.player>a')[0].get('href')
-                    req = urllib.request.Request(href, headers={'User-Agent': 'Mozilla/5.0'})
+                    href = 'https://scoresaber.com' + \
+                        players[sel].select('.player>a')[0].get('href')
+                    req = urllib.request.Request(
+                        href, headers={'User-Agent': 'Mozilla/5.0'})
                     html = urllib.request.urlopen(req).read().decode('utf-8')
                     soup = BeautifulSoup(html, 'html.parser')
 
                     embed = createProfile(soup, href)
-                    embed.set_footer(text="내정보로 등록하시려면 💾을 눌러주세요.".format(prefix=prefix))
+                    embed.set_footer(
+                        text="내정보로 등록하시려면 💾을 눌러주세요.".format(prefix=prefix))
                 if 'searchlist' in locals():
                     await searchlist.edit(content="", embed=embed)
                 else:
@@ -91,26 +100,29 @@ class App(discord.Client):
 
                 #이모지 추가
                 await searchlist.add_reaction(emoji_disk[0])
+
                 def check_save(reaction, user):
                     return user == message.author and str(reaction.emoji) in emoji_disk
                 try:
                     res = await self.wait_for('reaction_add', timeout=30, check=check_save)
-                except asyncio.TimeoutError: #시간초과
+                except asyncio.TimeoutError:  # 시간초과
                     await clear_reactions(searchlist)
                     return False
 
-                rankid = players[sel].select('.player>a')[0].get('href').strip()[3:]
+                rankid = players[sel].select('.player>a')[
+                    0].get('href').strip()[3:]
                 if saveProfile(message.author.id, rankid):
                     await clear_reactions(searchlist)
                     await message.channel.send('내정보 등록이 완료되었습니다.')
             elif command in ['랭킹', '순위', '탑텐', 'top10', 'rank']:
                 async with message.channel.typing():
                     country = urllib.parse.quote(' '.join(msg[1:]))
-                    if len(country)>0:
+                    if len(country) > 0:
                         url = "https://scoresaber.com/global?country="+country
                     else:
                         url = "https://scoresaber.com/global"
-                    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                    req = urllib.request.Request(
+                        url, headers={'User-Agent': 'Mozilla/5.0'})
                     html = urllib.request.urlopen(req).read().decode('utf-8')
                     soup = BeautifulSoup(html, 'html.parser')
 
@@ -122,7 +134,8 @@ class App(discord.Client):
                         player = players[i].select('.player>a')[0]
                         rank = players[i].select('.rank')[0]
                         pp = players[i].select('.ppValue')[0]
-                        content += '{} : {} ( {} )\n'.format(i+1, player.text.strip(), pp.text.strip())
+                        content += '{} : {} ( {} )\n'.format(i+1,
+                                                             player.text.strip(), pp.text.strip())
                     content += '```'
                     searchlist = await message.channel.send(content)
                 else:
@@ -133,11 +146,14 @@ class App(discord.Client):
                 #이모지 추가
                 buttons = ['⬅', '➡']
                 if sel < 0:
-                    for e in emoji_num: await searchlist.add_reaction(e)
-                    def check2(reaction, user): return user == message.author and str(reaction.emoji) in emoji_num
+                    for e in emoji_num:
+                        await searchlist.add_reaction(e)
+
+                    def check2(reaction, user): return user == message.author and str(
+                        reaction.emoji) in emoji_num
                     try:
                         res = await self.wait_for('reaction_add', timeout=30, check=check2)
-                    except asyncio.TimeoutError: #시간초과
+                    except asyncio.TimeoutError:  # 시간초과
                         return False
                     else:
                         sel = emoji_num.index(res[0].emoji)
@@ -152,17 +168,21 @@ class App(discord.Client):
                         await message.channel.send('내정보 등록이 완료되었습니다.')
                 else:
                     async with message.channel.typing():
-                        rows = db_select('quicks', '*', 'uid='+str(message.author.id))
+                        rows = db_select(
+                            'quicks', '*', 'uid='+str(message.author.id))
 
                         if len(rows) > 0:
-                            href = 'https://scoresaber.com/u/'+rows[0]['rankid']
-                            req = urllib.request.Request(href, headers={'User-Agent': 'Mozilla/5.0'})
-                            html = urllib.request.urlopen(req).read().decode('utf-8')
+                            href = 'https://scoresaber.com/u/' + \
+                                rows[0]['rankid']
+                            req = urllib.request.Request(
+                                href, headers={'User-Agent': 'Mozilla/5.0'})
+                            html = urllib.request.urlopen(
+                                req).read().decode('utf-8')
                             soup = BeautifulSoup(html, 'html.parser')
 
                             embed = createProfile(soup, href)
                     if len(rows) > 0:
-                        await message.channel.send(embeds=embed)
+                        await message.channel.send(embed=embed)
                     else:
                         await message.channel.send('등록된 계정이 없습니다. [{}내정보 등록]을 먼저 실행해주세요.'.format(prefix))
             #나만
@@ -184,13 +204,16 @@ class App(discord.Client):
                         tmp += h.author.name + " : " + h.content + "\n"
                     await message.channel.send(tmp)
 
+
 def clear_reactions(msg):
     if msg.guild:
         perms = msg.channel.permissions_for(msg.guild.me)
         if(perms.manage_messages):
             return msg.clear_reactions()
         else:
-            for e in emoji_num: return msg.remove_reaction(e, bot.user)
+            for e in emoji_num:
+                return msg.remove_reaction(e, bot.user)
+
 
 def saveProfile(uid, rankid):
     if db_select('quicks', 'count(*) as count', 'uid='+str(uid))[0]['count'] > 0:
@@ -198,6 +221,7 @@ def saveProfile(uid, rankid):
     else:
         db_insert('quicks', 'uid, rankid', (uid, rankid))
     return True
+
 
 def createProfile(soup, href):
     avatar = soup.select('.avatar>img')[0].get('src')
@@ -217,26 +241,33 @@ def createProfile(soup, href):
     columns.append(info[3].text.split(':'))
     columns.append(info[4].text.split(':'))
 
-    embed = discord.Embed(title='더 자세히 보려면 여기를 클릭하세요.', description='Player Ranking: {} - ( 국내 {} )'.format(rank_global, rank_country), url=href, color=embed_color)
+    embed = discord.Embed(title='더 자세히 보려면 여기를 클릭하세요.', description='Player Ranking: {} - ( 국내 {} )'.format(
+        rank_global, rank_country), url=href, color=embed_color)
     embed.set_thumbnail(url=avatar)
     embed.set_author(name=name, icon_url=country)
     for column in columns:
-        embed.add_field(name=column[0].strip(), value=column[1].strip(), inline=False)
+        embed.add_field(name=column[0].strip(),
+                        value=column[1].strip(), inline=False)
     return embed
 
+
 def db_insert(table, columns, values):
-    conn = pymysql.connect(host=mysql_host, user=mysql_user, password=mysql_password, db=mysql_database, charset=mysql_charset)
+    conn = pymysql.connect(host=mysql_host, user=mysql_user,
+                           password=mysql_password, db=mysql_database, charset=mysql_charset)
     curs = conn.cursor()
 
     tmp = "%s"
     tmp += ", %s" * (len(values)-1)
-    curs.execute("insert into {}({}) values ({})".format(table, columns, tmp), values)
+    curs.execute("insert into {}({}) values ({})".format(
+        table, columns, tmp), values)
     conn.commit()
 
     conn.close()
 
+
 def db_update(table, wheres, sets):
-    conn = pymysql.connect(host=mysql_host, user=mysql_user, password=mysql_password, db=mysql_database, charset=mysql_charset)
+    conn = pymysql.connect(host=mysql_host, user=mysql_user,
+                           password=mysql_password, db=mysql_database, charset=mysql_charset)
     curs = conn.cursor()
 
     curs.execute("update {} set {} where {}".format(table, sets, wheres))
@@ -244,8 +275,10 @@ def db_update(table, wheres, sets):
 
     conn.close()
 
+
 def db_delete(table, where, values):
-    conn = pymysql.connect(host=mysql_host, user=mysql_user, password=mysql_password, db=mysql_database, charset=mysql_charset)
+    conn = pymysql.connect(host=mysql_host, user=mysql_user,
+                           password=mysql_password, db=mysql_database, charset=mysql_charset)
     curs = conn.cursor()
 
     curs.execute("delete from {} where {}".format(table, where), values)
@@ -253,8 +286,10 @@ def db_delete(table, where, values):
 
     conn.close()
 
+
 def db_select(table, select, where):
-    conn = pymysql.connect(host=mysql_host, user=mysql_user, password=mysql_password, db=mysql_database, charset=mysql_charset)
+    conn = pymysql.connect(host=mysql_host, user=mysql_user,
+                           password=mysql_password, db=mysql_database, charset=mysql_charset)
     curs = conn.cursor(pymysql.cursors.DictCursor)
 
     curs.execute("select {} from {} where {}".format(select, table, where))
@@ -263,6 +298,7 @@ def db_select(table, select, where):
     conn.close()
 
     return rows
+
 
 bot = App()
 bot.run(token)

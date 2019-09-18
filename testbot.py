@@ -162,7 +162,7 @@ class App(discord.Client):
 
                             embed = createProfile(soup, href)
                     if len(rows) > 0:
-                        await message.channel.send(embeds=embed)
+                        await message.channel.send(embed=embed)
                     else:
                         await message.channel.send('등록된 계정이 없습니다. [{}내정보 등록]을 먼저 실행해주세요.'.format(prefix))
             #나만
