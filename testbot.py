@@ -14,6 +14,7 @@ token = 'NjExODgxNzkxMDc4NTMxMDkz.XV3gKw.nX_ZEFo08o5IIorxqAED77S677o'
 prefix = '-'
 embed_color = 0x880015
 emoji_num = ['1⃣', '2⃣', '3⃣', '4⃣', '5⃣']
+emoji_disk = ['💾']
 
 mysql_host = '172.105.241.159'
 mysql_user = 'root'
@@ -34,8 +35,6 @@ class App(discord.Client):
             msg = message.content.split(' ')
             command = msg[0][len(prefix):]
             if command in ['검색', '전적', 'search']:
-                if message.guild:
-                    perms = message.channel.permissions_for(message.guild.me)
                 search = urllib.parse.quote(' '.join(msg[1:]))
                 if len(search)==0:
                     return await message.channel.send('검색할 닉네임을 입력해주세요')
@@ -60,17 +59,17 @@ class App(discord.Client):
                         content += '```'
                         searchlist = await message.channel.send(content)
                 else:
-                    await message.channel.send('검색한 닉네임이 존재하지 않습니다. 다시 확인해주세요.')
-                    return False
+                    return await message.channel.send('검색한 닉네임이 존재하지 않습니다. 다시 확인해주세요.')
 
                 #이모지 추가
                 if sel < 0:
                     for e in emoji_num[:min(5, len(players))]: await searchlist.add_reaction(e)
-                    def check(reaction, user): return user == message.author and str(reaction.emoji) in emoji_num
+                    def check_num(reaction, user): return user == message.author and str(reaction.emoji) in emoji_num
                     try:
-                        res = await self.wait_for('reaction_add', timeout=30, check=check)
+                        res = await self.wait_for('reaction_add', timeout=30, check=check_num)
                     except asyncio.TimeoutError: #시간초과
-                        await message.channel.send('시간이 초과되었습니다. 다시 시도해주세요.')
+                        await searchlist.edit(content="시간이 초과되었습니다. 다시 시도해주세요.")
+                        await clear_reactions(searchlist)
                         return False
                     else:
                         sel = emoji_num.index(res[0].emoji)
@@ -83,23 +82,26 @@ class App(discord.Client):
                     soup = BeautifulSoup(html, 'html.parser')
 
                     embed = createProfile(soup, href)
-                    embed.set_footer(text="내정보로 등록하시려면 {prefix}등록 을 입력해주세요.".format(prefix=prefix))
-                await searchlist.edit(content="", embed=embed)
-
-                if(perms.manage_messages):
-                    await searchlist.clear_reactions()
+                    embed.set_footer(text="내정보로 등록하시려면 💾을 눌러주세요.".format(prefix=prefix))
+                if 'searchlist' in locals():
+                    await searchlist.edit(content="", embed=embed)
                 else:
-                    for e in emoji_num: await searchlist.remove_reaction(e, self.user)
+                    searchlist = await message.channel.send(embed=embed)
+                await clear_reactions(searchlist)
 
-                # 내정보 등록
-                def save_profile(profile_message): return profile_message.author == message.author and profile_message.content.strip() == "{prefix}등록".format(prefix=prefix)
+                #이모지 추가
+                await searchlist.add_reaction(emoji_disk[0])
+                def check_save(reaction, user):
+                    return user == message.author and str(reaction.emoji) in emoji_disk
                 try:
-                    res = await self.wait_for('message', timeout=30, check=save_profile)
+                    res = await self.wait_for('reaction_add', timeout=30, check=check_save)
                 except asyncio.TimeoutError: #시간초과
+                    await clear_reactions(searchlist)
                     return False
 
                 rankid = players[sel].select('.player>a')[0].get('href').strip()[3:]
                 if saveProfile(message.author.id, rankid):
+                    await clear_reactions(searchlist)
                     await message.channel.send('내정보 등록이 완료되었습니다.')
             elif command in ['랭킹', '순위', '탑텐', 'top10', 'rank']:
                 async with message.channel.typing():
@@ -181,6 +183,14 @@ class App(discord.Client):
                     for h in history:
                         tmp += h.author.name + " : " + h.content + "\n"
                     await message.channel.send(tmp)
+
+def clear_reactions(msg):
+    if msg.guild:
+        perms = msg.channel.permissions_for(msg.guild.me)
+        if(perms.manage_messages):
+            return msg.clear_reactions()
+        else:
+            for e in emoji_num: return msg.remove_reaction(e, bot.user)
 
 def saveProfile(uid, rankid):
     if db_select('quicks', 'count(*) as count', 'uid='+str(uid))[0]['count'] > 0:
