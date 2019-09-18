@@ -174,6 +174,13 @@ class App(discord.Client):
                     voice = message.author.voice.channel
                     vc = await voice.connect()
                     vc.play()
+                elif command in ['history']:
+                    history = await message.channel.history(limit=10).flatten()
+                    history.reverse()
+                    tmp = ""
+                    for h in history:
+                        tmp += h.author.name + " : " + h.content + "\n"
+                    await message.channel.send(tmp)
 
 def saveProfile(uid, rankid):
     if db_select('quicks', 'count(*) as count', 'uid='+str(uid))[0]['count'] > 0:
