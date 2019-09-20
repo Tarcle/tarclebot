@@ -35,15 +35,13 @@ def delete(table, where, values):
 
     conn.close()
 
-def select(table, select, where="", join=""):
+def select(table, select, after):
     conn = pymysql.connect(host=mysql_host, user=mysql_user, password=mysql_password, db=mysql_database, charset=mysql_charset)
     curs = conn.cursor(pymysql.cursors.DictCursor)
 
     sql = "select {} from {}".format(select, table)
-    if len(where) > 0:
-        sql += " where {}".format(where)
-    if len(join) > 0:
-        sql += " " + join
+    if len(after) > 0:
+        sql += " " + after
     curs.execute(sql)
     rows = curs.fetchall()
 
