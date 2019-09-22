@@ -285,7 +285,7 @@ def createProfile(soup, href):
     return embed
 
 def saveProfile(uid, rankid):
-    if mysql.select('quicks', 'count(*) as count', 'uid='+str(uid))[0]['count'] > 0:
+    if mysql.select('quicks', 'count(*) as count', 'where uid='+str(uid))[0]['count'] > 0:
         mysql.update('quicks', 'uid='+str(uid), 'rankid='+rankid)
     else:
         mysql.insert('quicks', 'uid, rankid', (uid, rankid))
