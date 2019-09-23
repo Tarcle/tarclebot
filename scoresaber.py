@@ -248,7 +248,7 @@ class App(discord.Client):
                     # WHERE a.uid=?
                     # ORDER BY a.idx, c.date
                     records = mysql.select(
-                        'supporters as a', 'date, c.rankid, rank_global, rank_country, pp',
+                        'supporters as a', 'c.date, c.rankid, c.rank_global, c.rank_country, c.pp',
                         ' JOIN quicks AS b ON a.uid = b.uid' +
                         ' JOIN rank_records AS c ON b.rankid = c.rankid' +
                         ' WHERE a.uid=' + str(message.author.id) +
