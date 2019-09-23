@@ -21,50 +21,37 @@ emoji_disk = ['💾']
 emoji_page = ['⬅', '➡']
 
 # 하루에 한번씩 랭킹정보 기록 (후원자 전용)
-
-
 def rank_record():
     # 후원자 목록 가져오기
-    supporters = mysql.select(
-        'supporters as a', 'a.*, b.rankid', 'JOIN quicks as b ON a.uid = b.uid')
+    supporters = mysql.select('supporters as a', 'a.*, b.rankid', 'JOIN quicks as b ON a.uid = b.uid')
     if len(supporters) > 0:
         for spt in supporters:
             rankid = spt['rankid']
 
             href = 'https://scoresaber.com/u/' + rankid
-            req = urllib.request.Request(
-                href, headers={'User-Agent': 'Mozilla/5.0'})
+            req = urllib.request.Request(href, headers={'User-Agent': 'Mozilla/5.0'})
             html = urllib.request.urlopen(req).read().decode('utf-8')
             soup = BeautifulSoup(html, 'html.parser')
-
+            
             info = soup.select('.column>ul>li')
             if len(info[0].select('a')) == 0:
                 del info[0]
-            rank_global = "".join(re.findall(
-                '[0-9]+', info[0].select('a')[0].text))
-            rank_country = "".join(re.findall(
-                '[0-9]+', info[0].select('a')[1].text))
+            rank_global = "".join(re.findall('[0-9]+', info[0].select('a')[0].text))
+            rank_country = "".join(re.findall('[0-9]+', info[0].select('a')[1].text))
             pp = re.findall('[0-9]+', info[1].text.split(':')[1])
             pp = "".join(pp[:-1]) + "." + pp[-1]
-            mysql.insert('rank_records', ['rankid', 'rank_global', 'rank_country', 'pp'], [
-                         rankid, rank_global, rank_country, pp])
-
+            mysql.insert('rank_records', ['rankid', 'rank_global', 'rank_country', 'pp'], [rankid, rank_global, rank_country, pp])
 
 schedule.every().day.at("09:00").do(rank_record)
-
-
 def run_schedule():
     while True:
         schedule.run_pending()
         time.sleep(1)
 
-
 # 봇 시작
 #페이징
 total_page = 0
 curr_page = 0
-
-
 class App(discord.Client):
     async def on_ready(self):
         print('다음으로 로그인합니다: {0}'.format(self.user))
@@ -82,12 +69,11 @@ class App(discord.Client):
             command = msg[0][len(prefix):]
             if command in ['검색', 'search', '-s']:
                 search = urllib.parse.quote(' '.join(msg[1:]))
-                if len(search) == 0:
+                if len(search)==0:
                     return await message.channel.send('검색할 닉네임을 입력해주세요')
 
                 async with message.channel.typing():
-                    req = urllib.request.Request(
-                        "https://scoresaber.com/global?search="+search, headers={'User-Agent': 'Mozilla/5.0'})
+                    req = urllib.request.Request("https://scoresaber.com/global?search="+search, headers={'User-Agent': 'Mozilla/5.0'})
                     html = urllib.request.urlopen(req).read().decode('utf-8')
                     soup = BeautifulSoup(html, 'html.parser')
 
@@ -103,8 +89,7 @@ class App(discord.Client):
                             player = players[i].select('.player>a>.pp')[0]
                             rank = players[i].select('.rank')[0]
                             pp = players[i].select('.ppValue')[0]
-                            content += '{} : {} ( {} ) - {}\n'.format(
-                                i+1, player.text.strip(), pp.text.strip(), rank.text.strip())
+                            content += '{} : {} ( {} ) - {}\n'.format(i+1, player.text.strip(), pp.text.strip(), rank.text.strip())
                         content += '```'
                         searchlist = await message.channel.send(content)
                 else:
@@ -112,14 +97,12 @@ class App(discord.Client):
 
                 #이모지 추가
                 if sel < 0:
-                    for e in emoji_num[:min(5, len(players))]:
-                        await searchlist.add_reaction(e)
-
+                    for e in emoji_num[:min(5, len(players))]: await searchlist.add_reaction(e)
                     def check_num(reaction, user):
                         return reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_num
                     try:
                         res = await self.wait_for('reaction_add', timeout=30, check=check_num)
-                    except asyncio.TimeoutError:  # 시간초과
+                    except asyncio.TimeoutError: #시간초과
                         await clearReaction(searchlist)
                         return False
                     else:
@@ -127,16 +110,13 @@ class App(discord.Client):
 
                 #페이지 이동
                 async with message.channel.typing():
-                    href = 'https://scoresaber.com' + \
-                        players[sel].select('.player>a')[0].get('href')
-                    req = urllib.request.Request(
-                        href, headers={'User-Agent': 'Mozilla/5.0'})
+                    href = 'https://scoresaber.com'+players[sel].select('.player>a')[0].get('href')
+                    req = urllib.request.Request(href, headers={'User-Agent': 'Mozilla/5.0'})
                     html = urllib.request.urlopen(req).read().decode('utf-8')
                     soup = BeautifulSoup(html, 'html.parser')
 
                     embed = createProfile(soup, href)
-                    embed.set_footer(
-                        text="내정보로 등록하시려면 💾을 눌러주세요.".format(prefix=prefix))
+                    embed.set_footer(text="내정보로 등록하시려면 💾을 눌러주세요.".format(prefix=prefix))
                 if 'searchlist' in locals():
                     await searchlist.edit(content="", embed=embed)
                 else:
@@ -145,30 +125,26 @@ class App(discord.Client):
 
                 #이모지 추가
                 await searchlist.add_reaction(emoji_disk[0])
-
                 def check_save(reaction, user):
                     return reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_disk
                 try:
                     res = await self.wait_for('reaction_add', timeout=30, check=check_save)
-                except asyncio.TimeoutError:  # 시간초과
+                except asyncio.TimeoutError: #시간초과
                     await clearReaction(searchlist)
                     return False
 
-                rankid = players[sel].select('.player>a')[
-                    0].get('href').strip()[3:]
+                rankid = players[sel].select('.player>a')[0].get('href').strip()[3:]
                 if saveProfile(message.author.id, rankid):
                     await clearReaction(searchlist)
                     await message.channel.send('내정보 등록이 완료되었습니다.')
             elif command in ['랭킹', '순위', '탑텐', 'rank', '-r']:
                 async with message.channel.typing():
                     country = ''.join(msg[1:])
-                    if len(country) > 0:
-                        url = "https://scoresaber.com/global?country=" + \
-                            urllib.parse.quote(country)
+                    if len(country)>0:
+                        url = "https://scoresaber.com/global?country="+urllib.parse.quote(country)
                     else:
                         url = "https://scoresaber.com/global"
-                    req = urllib.request.Request(
-                        url, headers={'User-Agent': 'Mozilla/5.0'})
+                    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
                     html = urllib.request.urlopen(req).read().decode('utf-8')
                     soup = BeautifulSoup(html, 'html.parser')
 
@@ -180,29 +156,24 @@ class App(discord.Client):
                 else:
                     return await message.channel.send('입력하신 국가코드는 존재하지 않습니다. 다시 확인해주세요.')
 
-                if len(players) < 11:
-                    return False
+                if len(players) < 11: return False
                 #페이징
                 total_page = int(len(players) / 10)
                 curr_page = 0
                 #이모지 추가
-                for e in emoji_page:
-                    await searchlist.add_reaction(e)
-
+                for e in emoji_page: await searchlist.add_reaction(e)
                 def check_rankpage(reaction, user):
                     return reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_page
                 while True:
                     try:
                         res = await self.wait_for('reaction_add', timeout=30, check=check_rankpage)
-                    except asyncio.TimeoutError:  # 시간초과
+                    except asyncio.TimeoutError: #시간초과
                         await clearReaction(searchlist)
                         break
                     else:
                         sel = emoji_page.index(res[0].emoji)
-                        if sel:
-                            curr_page += 1
-                        else:
-                            curr_page -= 1
+                        if sel: curr_page += 1
+                        else: curr_page -= 1
                         curr_page = (curr_page + total_page) % total_page
                         page_start = curr_page*10
                         embed = createRanklist(players, country, page_start)
@@ -222,16 +193,12 @@ class App(discord.Client):
                         await message.channel.send('내정보 등록이 완료되었습니다.')
                 else:
                     async with message.channel.typing():
-                        rows = mysql.select(
-                            'quicks', '*', 'where uid='+str(message.author.id))
+                        rows = mysql.select('quicks', '*', 'where uid='+str(message.author.id))
 
                         if len(rows) > 0:
-                            href = 'https://scoresaber.com/u/' + \
-                                rows[0]['rankid']
-                            req = urllib.request.Request(
-                                href, headers={'User-Agent': 'Mozilla/5.0'})
-                            html = urllib.request.urlopen(
-                                req).read().decode('utf-8')
+                            href = 'https://scoresaber.com/u/'+rows[0]['rankid']
+                            req = urllib.request.Request(href, headers={'User-Agent': 'Mozilla/5.0'})
+                            html = urllib.request.urlopen(req).read().decode('utf-8')
                             soup = BeautifulSoup(html, 'html.parser')
 
                             embed = createProfile(soup, href)
@@ -257,8 +224,7 @@ class App(discord.Client):
                     text = '```py\n'
                     for record in records:
                         text += '날짜 : {}월 {}일 | 순위 : {} ( {} ) | PP : {}\n'.format(
-                            record['date'].month, record['date'].day -
-                                1, record['rank_global'], record['rank_country'], record['pp']
+                            record['date'].month, record['date'].day-1, record['rank_global'], record['rank_country'], record['pp']
                         )
                     text += '```'
                 await message.channel.send(text)
@@ -283,7 +249,6 @@ class App(discord.Client):
                         tmp += h.author.name + " : " + h.content + "\n"
                     await message.channel.send(tmp)
 
-
 def clearReaction(msg):
     if msg.guild:
         perms = msg.channel.permissions_for(msg.guild.me)
@@ -291,7 +256,6 @@ def clearReaction(msg):
             return msg.clear_reactions()
         # else:
         #     for e in emoji_num: return msg.remove_reaction(e, bot.user)
-
 
 def createProfile(soup, href):
     avatar = soup.select('.avatar>img')[0].get('src')
@@ -306,23 +270,19 @@ def createProfile(soup, href):
     rank_global = info[0].select('a')[0].text.strip()
     rank_country = info[0].select('a')[1].text.strip()
     link_global = "https://scoresaber.com/global"
-    link_country = link_global + "?country=" + \
-        info[0].select('a')[1].get('href')[-2:]
+    link_country = link_global + "?country=" + info[0].select('a')[1].get('href')[-2:]
     columns = list()
     columns.append(info[1].text.split(':'))
     columns.append(info[2].text.split(':'))
     columns.append(info[3].text.split(':'))
     columns.append(info[4].text.split(':'))
 
-    embed = discord.Embed(title="자세히 보려면 여기를 클릭하세요.", description="Player Ranking: [{}]({} '글로벌 랭킹') - ( [국내 {}]({} '국내 랭킹') )".format(
-        rank_global, link_global, rank_country, link_country), url=href, color=embed_color)
+    embed = discord.Embed(title="자세히 보려면 여기를 클릭하세요.", description="Player Ranking: [{}]({} '글로벌 랭킹') - ( [국내 {}]({} '국내 랭킹') )".format(rank_global, link_global, rank_country, link_country), url=href, color=embed_color)
     embed.set_thumbnail(url=avatar)
     embed.set_author(name=name, icon_url=country)
     for column in columns:
-        embed.add_field(name=column[0].strip(),
-                        value=column[1].strip(), inline=False)
+        embed.add_field(name=column[0].strip(), value=column[1].strip(), inline=False)
     return embed
-
 
 def saveProfile(uid, rankid):
     if mysql.select('quicks', 'count(*) as count', 'where uid='+str(uid))[0]['count'] > 0:
@@ -331,30 +291,23 @@ def saveProfile(uid, rankid):
         mysql.insert('quicks', 'uid, rankid', (uid, rankid))
     return True
 
-
 def createRanklist(players, country, page_start=0):
     embed = discord.Embed(title="", description="", url="", color=embed_color)
     page_end = page_start + min(10, len(players)-curr_page*10)
     i = page_start
-    content = "[자세히 보려면 여기를 클릭하세요.](https://scoresaber.com/global?country=" + \
-        country+")\n\n"
+    content = "[자세히 보려면 여기를 클릭하세요.](https://scoresaber.com/global?country="+country+")\n\n"
     for player in players[page_start:page_end]:
         i += 1
         name = player.select('.player>a')[0].text.strip()
-        player_country = player.select('.player>a>img')[
-            0].get('src')[22:24].upper()
-        href = 'https://scoresaber.com' + \
-            player.select('.player>a')[0].get('href')
+        player_country = player.select('.player>a>img')[0].get('src')[22:24].upper()
+        href = 'https://scoresaber.com' + player.select('.player>a')[0].get('href')
         pp = player.select('.ppValue')[0].text.strip()
         weekly_change = player.select('.diff>span')[0].text.strip()
-        content += "#{}: [{}] [{}]({}) ( {} ) [ {} ]\n".format(
-            ('0'+str(i))[-2:], player_country, name, href, pp, weekly_change)
-    if country == "":
-        country = "글로벌"
-    embed.add_field(name=country + " 랭킹", value=content, inline=False)
+        content += "#{}: [{}] [{}]({}) ( {} ) [ {} ]\n".format(('0'+str(i))[-2:], player_country, name, href, pp, weekly_change)
+    if country=="": country = "글로벌"
+    embed.add_field(name=country.upper() + " 랭킹", value=content, inline=False)
 
     return embed
-
 
 bot = App()
 bot.run(token)

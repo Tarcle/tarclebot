@@ -305,7 +305,7 @@ def createRanklist(players, country, page_start=0):
         weekly_change = player.select('.diff>span')[0].text.strip()
         content += "#{}: [{}] [{}]({}) ( {} ) [ {} ]\n".format(('0'+str(i))[-2:], player_country, name, href, pp, weekly_change)
     if country=="": country = "글로벌"
-    embed.add_field(name=country + " 랭킹", value=content, inline=False)
+    embed.add_field(name=country.upper() + " 랭킹", value=content, inline=False)
 
     return embed
 
