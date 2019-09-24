@@ -84,7 +84,7 @@ class App(discord.Client):
                     if len(players) == 1:
                         sel = 0
                     else:
-                        content = '```py\n'
+                        content = '```json\n'
                         for i in range(min(5, len(players))):
                             player = players[i].select('.player>a>.pp')[0]
                             rank = players[i].select('.rank')[0]
@@ -117,11 +117,11 @@ class App(discord.Client):
 
                     embed = createProfile(soup, href)
                     embed.set_footer(text="내정보로 등록하시려면 💾을 눌러주세요.".format(prefix=prefix))
+                await clearReaction(searchlist)
                 if 'searchlist' in locals():
                     await searchlist.edit(content="", embed=embed)
                 else:
                     searchlist = await message.channel.send(embed=embed)
-                await clearReaction(searchlist)
 
                 #이모지 추가
                 await searchlist.add_reaction(emoji_disk[0])
@@ -177,7 +177,8 @@ class App(discord.Client):
                         curr_page = (curr_page + total_page) % total_page
                         page_start = curr_page*10
                         embed = createRanklist(players, country, page_start)
-                        await searchlist.remove_reaction(res[0].emoji, message.author)
+                        if(getPerms(message).manage_messages):
+                            await searchlist.remove_reaction(res[0].emoji, message.author)
                         await searchlist.edit(embed=embed)
             elif command in ['내정보', '-m']:
                 if len(msg) > 1 and msg[1] in ['등록']:
@@ -209,24 +210,35 @@ class App(discord.Client):
                         await message.channel.send('등록된 계정이 없습니다. [{}내정보 등록]을 먼저 실행해주세요.'.format(prefix))
             elif command in ['전적', '기록', 'history', '-h']:
                 async with message.channel.typing():
-                    # SELECT a.uid, a.name, price, c.date, c.rankid, c.rank_global, c.rank_country, c.pp FROM supporters AS a
-                    # JOIN quicks AS b ON a.uid = b.uid
-                    # JOIN rank_records AS c ON b.rankid = c.rankid
-                    # WHERE a.uid=?
-                    # ORDER BY a.idx, c.date
+# SELECT b.rankid, price, c.date, c.rank_global, c.rank_country, c.pp FROM supporters AS a
+# left JOIN quicks AS b ON a.uid = b.uid
+# left JOIN rank_records AS c ON b.rankid = c.rankid
+# WHERE a.uid='361018280569470986'
+# ORDER BY a.idx, c.date desc
                     records = mysql.select(
-                        'supporters as a', 'c.date, c.rankid, c.rank_global, c.rank_country, c.pp',
-                        ' JOIN quicks AS b ON a.uid = b.uid' +
-                        ' JOIN rank_records AS c ON b.rankid = c.rankid' +
+                        'supporters as a', 'b.rankid, c.date, c.rank_global, c.rank_country, c.pp',
+                        ' LEFT JOIN quicks AS b ON a.uid = b.uid' +
+                        ' LEFT JOIN rank_records AS c ON b.rankid = c.rankid' +
                         ' WHERE a.uid=' + str(message.author.id) +
                         ' order by a.idx, c.date desc'
                     )
-                    text = '```py\n'
-                    for record in records:
-                        text += '날짜 : {}월 {}일 | 순위 : {} ( {} ) | PP : {}\n'.format(
-                            record['date'].month, record['date'].day-1, record['rank_global'], record['rank_country'], record['pp']
-                        )
-                    text += '```'
+                if len(records) == 0:
+                    return await message.channel.send("```\n후원자를 위한 기능입니다.\n```")
+                if not records[0]['rankid']:
+                    return await message.channel.send("```\n내정보를 먼저 등록해주세요.\n```")
+                if not records[0]['date']:
+                    return await message.channel.send("```\n아직 데이터가 존재하지 않습니다.\n내일 다시 시도해주세요.```")
+                text = '```json\n'
+                i = 1
+                for record in records:
+                    text += '날짜 : %s월 %s일 | 순위 : #%d(#%d) | pp : %7.2f' % (
+                        str(record['date'].month).zfill(2), str(record['date'].day-1).zfill(2), record['rank_global'], record['rank_country'], record['pp']
+                    )
+                    if record != records[-1]:
+                        text += ' [+%6.2f]' % (record['pp']-records[i]['pp'])
+                    text += '\n'
+                    i += 1
+                text += '```'
                 await message.channel.send(text)
                 ''
 
@@ -249,13 +261,25 @@ class App(discord.Client):
                         tmp += h.author.name + " : " + h.content + "\n"
                     await message.channel.send(tmp)
 
+def getPerms(msg):
+    if msg.guild:
+        return msg.channel.permissions_for(msg.guild.me)
+    else:
+        return msg.channel.permissions_for(msg.channel.me)
+
 def clearReaction(msg):
     if msg.guild:
-        perms = msg.channel.permissions_for(msg.guild.me)
-        if(perms.manage_messages):
+        if(getPerms(msg).manage_messages):
             return msg.clear_reactions()
         # else:
         #     for e in emoji_num: return msg.remove_reaction(e, bot.user)
+
+def saveProfile(uid, rankid):
+    if mysql.select('quicks', 'count(*) as count', 'where uid='+str(uid))[0]['count'] > 0:
+        mysql.update('quicks', 'uid='+str(uid), 'rankid='+rankid)
+    else:
+        mysql.insert('quicks', 'uid, rankid', (uid, rankid))
+    return True
 
 def createProfile(soup, href):
     avatar = soup.select('.avatar>img')[0].get('src')
@@ -284,13 +308,6 @@ def createProfile(soup, href):
         embed.add_field(name=column[0].strip(), value=column[1].strip(), inline=False)
     return embed
 
-def saveProfile(uid, rankid):
-    if mysql.select('quicks', 'count(*) as count', 'where uid='+str(uid))[0]['count'] > 0:
-        mysql.update('quicks', 'uid='+str(uid), 'rankid='+rankid)
-    else:
-        mysql.insert('quicks', 'uid, rankid', (uid, rankid))
-    return True
-
 def createRanklist(players, country, page_start=0):
     embed = discord.Embed(title="", description="", url="", color=embed_color)
     page_end = page_start + min(10, len(players)-curr_page*10)
@@ -303,7 +320,7 @@ def createRanklist(players, country, page_start=0):
         href = 'https://scoresaber.com' + player.select('.player>a')[0].get('href')
         pp = player.select('.ppValue')[0].text.strip()
         weekly_change = player.select('.diff>span')[0].text.strip()
-        content += "#{}: [{}] [{}]({}) ( {} ) [ {} ]\n".format(('0'+str(i))[-2:], player_country, name, href, pp, weekly_change)
+        content += "#{}: [{}] [{}]({}) ( {} ) [ {} ]\n".format(str(i).zfill(2), player_country, name, href, pp, weekly_change)
     if country=="": country = "글로벌"
     embed.add_field(name=country.upper() + " 랭킹", value=content, inline=False)
 
