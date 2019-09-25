@@ -117,8 +117,8 @@ class App(discord.Client):
 
                     embed = createProfile(soup, href)
                     embed.set_footer(text="내정보로 등록하시려면 💾을 눌러주세요.".format(prefix=prefix))
-                await clearReaction(searchlist)
                 if 'searchlist' in locals():
+                    await clearReaction(searchlist)
                     await searchlist.edit(content="", embed=embed)
                 else:
                     searchlist = await message.channel.send(embed=embed)
