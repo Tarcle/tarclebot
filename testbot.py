@@ -203,7 +203,6 @@ class App(discord.Client):
                             soup = BeautifulSoup(html, 'html.parser')
 
                             embed = createProfile(soup, href)
-                            embed2 = createProfile(soup, href)
                     if len(rows) > 0:
                         await message.channel.send(embed=embed)
                     else:
