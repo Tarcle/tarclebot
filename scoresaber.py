@@ -10,6 +10,8 @@ import re
 import schedule
 import threading
 import time
+import math
+from datetime import date, timedelta
 
 import mysql
 
@@ -183,15 +185,37 @@ class App(discord.Client):
             elif command in ['내정보', '-m']:
                 if len(msg) > 1 and msg[1] in ['등록']:
                     if len(msg) > 2:
-                        reg = re.compile('^[0-9]{17}$')
-                        if not reg.match(msg[2]):
-                            return await message.channel.send("스코어세이버 id 형식에 맞지 않습니다. 닉네임이 아닌 url 숫자부분을 입력해야 합니다. 다시 확인해주세요.")
-                        async with message.channel.typing():
-                            uid = message.author.id
-                            rankid = msg[2]
-                            saveProfile(uid, rankid)
+                        reg = re.compile('^((https?:\/\/)?scoresaber\.com\/u\/)?[0-9]{17}$')
+                        if reg.match(msg[2]):
+                            async with message.channel.typing():
+                                uid = message.author.id
+                                rankid = msg[2][-17:]
+                                saveProfile(uid, rankid)
+                            await message.channel.send('내정보 등록이 완료되었습니다.')
+                        else:
+                            async with message.channel.typing():
+                                return await message.channel.send('검색 등록 준비중입니다. 스코어세이버 url을 입력해주세요.')
+                                search = ' '.join(msg[2:])
+                                req = urllib.request.Request("https://scoresaber.com/global?search="+search, headers={'User-Agent': 'Mozilla/5.0'})
+                                html = urllib.request.urlopen(req).read().decode('utf-8')
+                                soup = BeautifulSoup(html, 'html.parser')
 
-                        await message.channel.send('내정보 등록이 완료되었습니다.')
+                                sel = -1
+                                #검색목록 출력
+                                players = soup.select('.ranking>.ranking>tbody>tr')
+                            if len(players) > 0:
+                                if len(players) == 1:
+                                    sel = 0
+                                else:
+                                    content = '```json\n'
+                                    for i in range(min(5, len(players))):
+                                        player = players[i].select('.player>a>.pp')[0]
+                                        rank = players[i].select('.rank')[0]
+                                        pp = players[i].select('.ppValue')[0]
+                                        content += '{} : {} ( {} ) - {}\n'.format(i+1, player.text.strip(), pp.text.strip(), rank.text.strip())
+                                    content += '```'
+                                    searchlist = await message.channel.send(content)
+
                 else:
                     async with message.channel.typing():
                         rows = mysql.select('quicks', '*', 'where uid='+str(message.author.id))
@@ -207,53 +231,104 @@ class App(discord.Client):
                         await message.channel.send(embed=embed)
                     else:
                         await message.channel.send('등록된 계정이 없습니다. [{}내정보 등록]을 먼저 실행해주세요.'.format(prefix))
-            elif command in ['전적', '기록', 'history', '-h']:
+            elif command in ['전적', '기록', 'history', 'record', '-h']:
                 async with message.channel.typing():
-# SELECT b.rankid, price, c.date, c.rank_global, c.rank_country, c.pp FROM supporters AS a
-# left JOIN quicks AS b ON a.uid = b.uid
-# left JOIN rank_records AS c ON b.rankid = c.rankid
-# WHERE a.uid='361018280569470986'
-# ORDER BY a.idx, c.date desc
-                    records = mysql.select(
-                        'supporters as a', 'b.rankid, c.date, c.rank_global, c.rank_country, c.pp',
+                    # SELECT b.rankid, price, c.date - interval 1 day as date, c.rank_global, c.rank_country, c.pp FROM supporters AS a
+                    # left JOIN quicks AS b ON a.uid = b.uid
+                    # left JOIN rank_records AS c ON b.rankid = c.rankid
+                    # WHERE a.uid='361018280569470986'
+                    # ORDER BY a.idx, c.date desc LIMIT 10 OFFSET 0
+                    count = mysql.select(
+                        'supporters as a', 'count(*) as count',
                         ' LEFT JOIN quicks AS b ON a.uid = b.uid' +
                         ' LEFT JOIN rank_records AS c ON b.rankid = c.rankid' +
-                        ' WHERE a.uid=' + str(message.author.id) +
-                        ' order by a.idx, c.date desc'
-                    )
-                if len(records) == 0:
+                        ' WHERE a.uid=' + str(message.author.id)
+                    )[0]['count']
+                if count == 0:
                     return await message.channel.send("```\n후원자를 위한 기능입니다.\n```")
+                records = mysql.select(
+                    'supporters as a', 'b.rankid, c.date - interval 1 day as date, c.rank_global, c.rank_country, c.pp',
+                    ' LEFT JOIN quicks AS b ON a.uid = b.uid' +
+                    ' LEFT JOIN rank_records AS c ON b.rankid = c.rankid' +
+                    ' WHERE a.uid=' + str(message.author.id) +
+                    ' order by a.idx, c.date desc LIMIT 10'
+                )
                 if not records[0]['rankid']:
                     return await message.channel.send("```\n내정보를 먼저 등록해주세요.\n```")
                 if not records[0]['date']:
                     return await message.channel.send("```\n아직 데이터가 존재하지 않습니다.\n내일 다시 시도해주세요.```")
-                text = '```json\n'
-                i = 1
-                for record in records:
-                    text += '날짜 : %s월 %s일 | 순위 : #%d(#%d) | pp : %7.2f' % (
-                        str(record['date'].month).zfill(2), str(record['date'].day-1).zfill(2), record['rank_global'], record['rank_country'], record['pp']
-                    )
-                    if record != records[-1]:
-                        text += ' [+%6.2f]' % (record['pp']-records[i]['pp'])
-                    text += '\n'
-                    i += 1
-                text += '```'
-                await message.channel.send(text)
-                ''
+                
+                href = 'https://scoresaber.com/u/'+records[0]['rankid']
+                req = urllib.request.Request(href, headers={'User-Agent': 'Mozilla/5.0'})
+                html = urllib.request.urlopen(req).read().decode('utf-8')
+                soup = BeautifulSoup(html, 'html.parser')
+
+                info = soup.select('.column>ul>li')
+                if len(info[0].select('a')) == 0:
+                    del info[0]
+                rank_global = "".join(re.findall('[0-9]+', info[0].select('a')[0].text))
+                rank_country = "".join(re.findall('[0-9]+', info[0].select('a')[1].text))
+                pp = re.findall('[0-9]+', info[1].text.split(':')[1])
+                pp = "".join(pp[:-1]) + "." + pp[-1]
+
+                now = {'date': date.today(), 'rank_global': int(rank_global), 'rank_country': int(rank_country), 'pp': float(pp)}
+                records.insert(0, now)
+
+                recordlist = await message.channel.send(createRecordlist(records))
+                
+                if count > 10:
+                    #페이징
+                    total_page = int(math.ceil((count+1) / 10))
+                    curr_page = 0
+                    #이모지 추가
+                    for e in emoji_page: await recordlist.add_reaction(e)
+                    def check_recordlist(reaction, user):
+                        return reaction.message.id == recordlist.id and user == message.author and str(reaction.emoji) in emoji_page
+                    while True:
+                        try:
+                            res = await self.wait_for('reaction_add', timeout=30, check=check_recordlist)
+                        except asyncio.TimeoutError: #시간초과
+                            await clearReaction(recordlist)
+                            break
+                        else:
+                            sel = emoji_page.index(res[0].emoji)
+                            if sel: curr_page += 1
+                            else: curr_page -= 1
+                            curr_page = (curr_page + total_page) % total_page
+                            page_start = curr_page*10-1
+                            
+                            records = mysql.select(
+                                'supporters as a', 'b.rankid, c.date - interval 1 day as date, c.rank_global, c.rank_country, c.pp',
+                                ' LEFT JOIN quicks AS b ON a.uid = b.uid' +
+                                ' LEFT JOIN rank_records AS c ON b.rankid = c.rankid' +
+                                ' WHERE a.uid=' + str(message.author.id) +
+                                ' order by a.idx, c.date desc LIMIT 11 OFFSET ' + str(page_start)
+                            )
+                            if(getPerms(message).manage_messages):
+                                await recordlist.remove_reaction(res[0].emoji, message.author)
+                            await recordlist.edit(content=createRecordlist(records))
 
             #나만
             elif message.author.id == 361018280569470986:
                 if command in ['dm']:
                     dm = await message.author.create_dm()
                     await dm.send('test')
-                elif command in ['v']:
+                elif command in ['접속']:
                     if message.author.voice == None:
                         return await message.channel.send('먼저 음성 채널에 입장해주세요.')
-                    voice = message.author.voice.channel
-                    vc = await voice.connect()
-                    vc.play()
-                elif command in ['history']:
-                    history = await message.channel.history(limit=10).flatten()
+                    vc = message.guild.voice_client
+                    if vc == None:
+                        voice = message.author.voice.channel
+                        vc = await voice.connect()
+                    else:
+                        vc = await vc.move_to(message.author.voice.channel)
+                    ''
+                elif command in ['퇴장']:
+                    vc = message.guild.voice_client
+                    if vc != None:
+                        await vc.disconnect()
+                elif command in ['채팅']:
+                    history = await message.channel.history(limit=int(msg[1])).flatten()
                     history.reverse()
                     tmp = ""
                     for h in history:
@@ -324,6 +399,20 @@ def createRanklist(players, country, page_start=0):
     embed.add_field(name=country.upper() + " 랭킹", value=content, inline=False)
 
     return embed
+
+def createRecordlist(records):
+    text = '```json\n'
+    i = 1
+    for record in records[:min(len(records), 10)]:
+        text += '날짜 : %s월 %s일 | 순위 : #%d(#%d) | pp : %7.2f' % (
+            str(record['date'].month).zfill(2), str(record['date'].day).zfill(2), record['rank_global'], record['rank_country'], record['pp']
+        )
+        if record != records[-1]:
+            text += ' [+%6.2f]' % (record['pp']-records[i]['pp'])
+        text += '\n'
+        i += 1
+    text += '```'
+    return text
 
 bot = App()
 bot.run(token)
