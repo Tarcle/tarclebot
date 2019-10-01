@@ -35,7 +35,7 @@ def delete(table, where, values):
 
     conn.close()
 
-def select(table, select, after):
+def select(table, select, after = ''):
     conn = pymysql.connect(host=mysql_host, user=mysql_user, password=mysql_password, db=mysql_database, charset=mysql_charset)
     curs = conn.cursor(pymysql.cursors.DictCursor)
 

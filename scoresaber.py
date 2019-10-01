@@ -71,7 +71,17 @@ class App(discord.Client):
         if message.content.startswith(prefix):
             msg = message.content.split(' ')
             command = msg[0][len(prefix):]
-            if command in ['검색', 'search', '-s']:
+            if command in ['후원자']:
+                supporters = mysql.select('supporters', 'uid, name', 'WHERE uid!="361018280569470986" ORDER BY date')
+                duple = []
+                content = '```json\n'
+                for supporter in supporters:
+                    if supporter['uid'] in duple: continue
+                    content += '%10s님 (ID : %s)\n' % (supporter['name'], supporter['uid'])
+                    duple.append(supporter['uid'])
+                content += '%13s감사합니다.```' % ''
+                await message.channel.send(content)
+            elif command in ['검색', 'search', '-s']:
                 search = urllib.parse.quote(' '.join(msg[1:]))
                 if len(search)==0:
                     return await message.channel.send('검색할 닉네임을 입력해주세요')
@@ -247,11 +257,11 @@ class App(discord.Client):
                         await message.channel.send('등록된 계정이 없습니다. [{}내정보 등록]을 먼저 실행해주세요.'.format(prefix))
             elif command in ['전적', '기록', 'history', 'record', '-h']:
                 async with message.channel.typing():
-                    # SELECT b.rankid, price, c.date - interval 1 day as date, c.rank_global, c.rank_country, c.pp FROM supporters AS a
+                    # SELECT a.date + INTERVAL 1 MONTH AS pricedate, b.rankid, price, c.date - INTERVAL 1 day AS date, c.rank_global, c.rank_country, c.pp FROM supporters AS a
                     # left JOIN quicks AS b ON a.uid = b.uid
                     # left JOIN rank_records AS c ON b.rankid = c.rankid
-                    # WHERE a.uid='361018280569470986'
-                    # ORDER BY a.idx, c.date desc LIMIT 10 OFFSET 0
+                    # WHERE a.uid='361018280569470986' AND (a.date + INTERVAL 1 MONTH >= c.date - INTERVAL 1 DAY OR a.admin = 0)
+                    # ORDER BY a.idx, c.date DESC
                     count = mysql.select(
                         'supporters as a', 'count(*) as count',
                         ' LEFT JOIN quicks AS b ON a.uid = b.uid' +
