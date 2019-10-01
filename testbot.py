@@ -15,6 +15,8 @@ from datetime import date, timedelta
 
 import mysql
 
+import youtube_dl
+
 token = 'NjExODgxNzkxMDc4NTMxMDkz.XV3gKw.nX_ZEFo08o5IIorxqAED77S677o'
 prefix = '-'
 embed_color = 0x880015
@@ -56,7 +58,7 @@ total_page = 0
 curr_page = 0
 class App(discord.Client):
     async def on_ready(self):
-        print('다음으로 로그인합니다: {0}'.format(self.user))
+        print('logged in: {0}'.format(self.user))
         print('===============')
         # await self.change_presence(activity=discord.Game(name='{ch} 검색 [닉네임]'.format(ch=prefix), type=1))
         # 스케쥴 스레드 실행
@@ -100,10 +102,9 @@ class App(discord.Client):
                 #이모지 추가
                 if sel < 0:
                     for e in emoji_num[:min(5, len(players))]: await searchlist.add_reaction(e)
-                    def check_num(reaction, user):
-                        return reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_num
                     try:
-                        res = await self.wait_for('reaction_add', timeout=30, check=check_num)
+                        res = await self.wait_for('reaction_add', timeout=30,
+                            check=(lambda reaction, user: reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_num))
                     except asyncio.TimeoutError: #시간초과
                         await clearReaction(searchlist)
                         return False
@@ -127,10 +128,9 @@ class App(discord.Client):
 
                 #이모지 추가
                 await searchlist.add_reaction(emoji_disk[0])
-                def check_save(reaction, user):
-                    return reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_disk
                 try:
-                    res = await self.wait_for('reaction_add', timeout=30, check=check_save)
+                    res = await self.wait_for('reaction_add', timeout=30,
+                        check=(lambda reaction, user: reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_disk))
                 except asyncio.TimeoutError: #시간초과
                     await clearReaction(searchlist)
                     return False
@@ -164,11 +164,10 @@ class App(discord.Client):
                 curr_page = 0
                 #이모지 추가
                 for e in emoji_page: await searchlist.add_reaction(e)
-                def check_rankpage(reaction, user):
-                    return reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_page
                 while True:
                     try:
-                        res = await self.wait_for('reaction_add', timeout=30, check=check_rankpage)
+                        res = await self.wait_for('reaction_add', timeout=30,
+                            check=(lambda reaction, user: reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_page))
                     except asyncio.TimeoutError: #시간초과
                         await clearReaction(searchlist)
                         break
@@ -282,11 +281,10 @@ class App(discord.Client):
                     curr_page = 0
                     #이모지 추가
                     for e in emoji_page: await recordlist.add_reaction(e)
-                    def check_recordlist(reaction, user):
-                        return reaction.message.id == recordlist.id and user == message.author and str(reaction.emoji) in emoji_page
                     while True:
                         try:
-                            res = await self.wait_for('reaction_add', timeout=30, check=check_recordlist)
+                            res = await self.wait_for('reaction_add', timeout=30,
+                                check=(lambda reaction, user: reaction.message.id == recordlist.id and user == message.author and str(reaction.emoji) in emoji_page))
                         except asyncio.TimeoutError: #시간초과
                             await clearReaction(recordlist)
                             break
@@ -334,6 +332,11 @@ class App(discord.Client):
                     for h in history:
                         tmp += h.author.name + " : " + h.content + "\n"
                     await message.channel.send(tmp)
+                elif command in ['y']:
+                    url = "https://www.youtube.com/watch?v=Eq3YJ1SrWns"
+                    ydl = youtube_dl.YoutubeDL({})
+                    ydl.extract_info(url, download=False)
+                    ''
 
 def getPerms(msg):
     if msg.guild:
