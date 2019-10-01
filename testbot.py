@@ -184,16 +184,13 @@ class App(discord.Client):
             elif command in ['내정보', '-m']:
                 if len(msg) > 1 and msg[1] in ['등록']:
                     if len(msg) > 2:
-                        reg = re.compile('^((https?:\/\/)?scoresaber\.com\/u\/)?[0-9]{17}$')
-                        if reg.match(msg[2]):
+                        if re.match('^((https?:\\/\\/)?scoresaber\\.com\\/u\\/)?[0-9]{17}$', msg[2]):
                             async with message.channel.typing():
-                                uid = message.author.id
                                 rankid = msg[2][-17:]
-                                saveProfile(uid, rankid)
+                                saveProfile(message.author.id, rankid)
                             await message.channel.send('내정보 등록이 완료되었습니다.')
                         else:
                             async with message.channel.typing():
-                                return await message.channel.send('검색 등록 준비중입니다. 스코어세이버 url을 입력해주세요.')
                                 search = ' '.join(msg[2:])
                                 req = urllib.request.Request("https://scoresaber.com/global?search="+search, headers={'User-Agent': 'Mozilla/5.0'})
                                 html = urllib.request.urlopen(req).read().decode('utf-8')
@@ -214,7 +211,25 @@ class App(discord.Client):
                                         content += '{} : {} ( {} ) - {}\n'.format(i+1, player.text.strip(), pp.text.strip(), rank.text.strip())
                                     content += '```'
                                     searchlist = await message.channel.send(content)
+                            else:
+                                return await message.channel.send('검색한 닉네임이 존재하지 않습니다. 다시 확인해주세요.')
 
+                            #이모지 추가
+                            if sel < 0:
+                                for e in emoji_num[:min(5, len(players))]: await searchlist.add_reaction(e)
+                                try:
+                                    res = await self.wait_for('reaction_add', timeout=30,
+                                        check=(lambda reaction, user: reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_num))
+                                except asyncio.TimeoutError: #시간초과
+                                    await clearReaction(searchlist)
+                                    return False
+                                else:
+                                    sel = emoji_num.index(res[0].emoji)
+                            rankid = players[sel].select('.player>a')[0].get('href')[-17:]
+                            saveProfile(message.author.id, rankid)
+                            await message.channel.send('내정보 등록이 완료되었습니다.')
+                    else:
+                        return await message.channel.send('닉네임 또는 스코어세이버 URL을 입력해주세요.')
                 else:
                     async with message.channel.typing():
                         rows = mysql.select('quicks', '*', 'where uid='+str(message.author.id))
@@ -350,8 +365,6 @@ def clearReaction(msg):
     if msg.guild:
         if(getPerms(msg).manage_messages):
             return msg.clear_reactions()
-        # else:
-        #     for e in emoji_num: return msg.remove_reaction(e, bot.user)
 
 def saveProfile(uid, rankid):
     if mysql.select('quicks', 'count(*) as count', 'where uid="'+str(uid)+'"')[0]['count'] > 0:

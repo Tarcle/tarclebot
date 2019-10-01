@@ -15,6 +15,8 @@ from datetime import date, timedelta
 
 import mysql
 
+import youtube_dl
+
 token = 'NjExNzkxNjY5NTQ4ODEwMjYx.XVY-aQ.ybFurqgvEOz66djiibWhgk0E3Uw'
 prefix = '-'
 embed_color = 0x880015
@@ -56,7 +58,7 @@ total_page = 0
 curr_page = 0
 class App(discord.Client):
     async def on_ready(self):
-        print('다음으로 로그인합니다: {0}'.format(self.user))
+        print('logged in: {0}'.format(self.user))
         print('===============')
         # await self.change_presence(activity=discord.Game(name='{ch} 검색 [닉네임]'.format(ch=prefix), type=1))
         # 스케쥴 스레드 실행
@@ -100,10 +102,9 @@ class App(discord.Client):
                 #이모지 추가
                 if sel < 0:
                     for e in emoji_num[:min(5, len(players))]: await searchlist.add_reaction(e)
-                    def check_num(reaction, user):
-                        return reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_num
                     try:
-                        res = await self.wait_for('reaction_add', timeout=30, check=check_num)
+                        res = await self.wait_for('reaction_add', timeout=30,
+                            check=(lambda reaction, user: reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_num))
                     except asyncio.TimeoutError: #시간초과
                         await clearReaction(searchlist)
                         return False
@@ -127,10 +128,9 @@ class App(discord.Client):
 
                 #이모지 추가
                 await searchlist.add_reaction(emoji_disk[0])
-                def check_save(reaction, user):
-                    return reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_disk
                 try:
-                    res = await self.wait_for('reaction_add', timeout=30, check=check_save)
+                    res = await self.wait_for('reaction_add', timeout=30,
+                        check=(lambda reaction, user: reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_disk))
                 except asyncio.TimeoutError: #시간초과
                     await clearReaction(searchlist)
                     return False
@@ -164,11 +164,10 @@ class App(discord.Client):
                 curr_page = 0
                 #이모지 추가
                 for e in emoji_page: await searchlist.add_reaction(e)
-                def check_rankpage(reaction, user):
-                    return reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_page
                 while True:
                     try:
-                        res = await self.wait_for('reaction_add', timeout=30, check=check_rankpage)
+                        res = await self.wait_for('reaction_add', timeout=30,
+                            check=(lambda reaction, user: reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_page))
                     except asyncio.TimeoutError: #시간초과
                         await clearReaction(searchlist)
                         break
@@ -185,16 +184,13 @@ class App(discord.Client):
             elif command in ['내정보', '-m']:
                 if len(msg) > 1 and msg[1] in ['등록']:
                     if len(msg) > 2:
-                        reg = re.compile('^((https?:\/\/)?scoresaber\.com\/u\/)?[0-9]{17}$')
-                        if reg.match(msg[2]):
+                        if re.match('^((https?:\\/\\/)?scoresaber\\.com\\/u\\/)?[0-9]{17}$', msg[2]):
                             async with message.channel.typing():
-                                uid = message.author.id
                                 rankid = msg[2][-17:]
-                                saveProfile(uid, rankid)
+                                saveProfile(message.author.id, rankid)
                             await message.channel.send('내정보 등록이 완료되었습니다.')
                         else:
                             async with message.channel.typing():
-                                return await message.channel.send('검색 등록 준비중입니다. 스코어세이버 url을 입력해주세요.')
                                 search = ' '.join(msg[2:])
                                 req = urllib.request.Request("https://scoresaber.com/global?search="+search, headers={'User-Agent': 'Mozilla/5.0'})
                                 html = urllib.request.urlopen(req).read().decode('utf-8')
@@ -215,7 +211,25 @@ class App(discord.Client):
                                         content += '{} : {} ( {} ) - {}\n'.format(i+1, player.text.strip(), pp.text.strip(), rank.text.strip())
                                     content += '```'
                                     searchlist = await message.channel.send(content)
+                            else:
+                                return await message.channel.send('검색한 닉네임이 존재하지 않습니다. 다시 확인해주세요.')
 
+                            #이모지 추가
+                            if sel < 0:
+                                for e in emoji_num[:min(5, len(players))]: await searchlist.add_reaction(e)
+                                try:
+                                    res = await self.wait_for('reaction_add', timeout=30,
+                                        check=(lambda reaction, user: reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_num))
+                                except asyncio.TimeoutError: #시간초과
+                                    await clearReaction(searchlist)
+                                    return False
+                                else:
+                                    sel = emoji_num.index(res[0].emoji)
+                            rankid = players[sel].select('.player>a')[0].get('href')[-17:]
+                            saveProfile(message.author.id, rankid)
+                            await message.channel.send('내정보 등록이 완료되었습니다.')
+                    else:
+                        return await message.channel.send('닉네임 또는 스코어세이버 URL을 입력해주세요.')
                 else:
                     async with message.channel.typing():
                         rows = mysql.select('quicks', '*', 'where uid='+str(message.author.id))
@@ -282,11 +296,10 @@ class App(discord.Client):
                     curr_page = 0
                     #이모지 추가
                     for e in emoji_page: await recordlist.add_reaction(e)
-                    def check_recordlist(reaction, user):
-                        return reaction.message.id == recordlist.id and user == message.author and str(reaction.emoji) in emoji_page
                     while True:
                         try:
-                            res = await self.wait_for('reaction_add', timeout=30, check=check_recordlist)
+                            res = await self.wait_for('reaction_add', timeout=30,
+                                check=(lambda reaction, user: reaction.message.id == recordlist.id and user == message.author and str(reaction.emoji) in emoji_page))
                         except asyncio.TimeoutError: #시간초과
                             await clearReaction(recordlist)
                             break
@@ -336,6 +349,11 @@ class App(discord.Client):
                     for h in history:
                         tmp += h.author.name + " : " + h.content + "\n"
                     await message.channel.send(tmp)
+                elif command in ['y']:
+                    url = "https://www.youtube.com/watch?v=Eq3YJ1SrWns"
+                    ydl = youtube_dl.YoutubeDL({})
+                    ydl.extract_info(url, download=False)
+                    ''
 
 def getPerms(msg):
     if msg.guild:
@@ -347,8 +365,6 @@ def clearReaction(msg):
     if msg.guild:
         if(getPerms(msg).manage_messages):
             return msg.clear_reactions()
-        # else:
-        #     for e in emoji_num: return msg.remove_reaction(e, bot.user)
 
 def saveProfile(uid, rankid):
     if mysql.select('quicks', 'count(*) as count', 'where uid="'+str(uid)+'"')[0]['count'] > 0:
