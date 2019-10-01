@@ -293,7 +293,7 @@ class App(discord.Client):
                             if sel: curr_page += 1
                             else: curr_page -= 1
                             curr_page = (curr_page + total_page) % total_page
-                            page_start = curr_page*10-1
+                            page_start = max(curr_page*10-1, 0)
                             
                             records = mysql.select(
                                 'supporters as a', 'b.rankid, c.date - interval 1 day as date, c.rank_global, c.rank_country, c.pp',
@@ -302,6 +302,8 @@ class App(discord.Client):
                                 ' WHERE a.uid=' + str(message.author.id) +
                                 ' order by a.idx, c.date desc LIMIT 11 OFFSET ' + str(page_start)
                             )
+                            if curr_page == 0:
+                                records.insert(0, now)
                             if(getPerms(message).manage_messages):
                                 await recordlist.remove_reaction(res[0].emoji, message.author)
                             await recordlist.edit(content=createRecordlist(records))
