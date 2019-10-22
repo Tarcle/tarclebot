@@ -51,6 +51,9 @@ def run_schedule():
     while True:
         schedule.run_pending()
         time.sleep(1)
+# 스케쥴 스레드 실행
+t1 = threading.Thread(target=run_schedule)
+t1.start()
 
 # 봇 시작
 #페이징
@@ -61,9 +64,6 @@ class App(discord.Client):
         print('logged in: {0}'.format(self.user))
         print('===============')
         # await self.change_presence(activity=discord.Game(name='{ch} 검색 [닉네임]'.format(ch=prefix), type=1))
-        # 스케쥴 스레드 실행
-        t1 = threading.Thread(target=run_schedule)
-        t1.start()
 
     async def on_message(self, message):
         if message.author.bot:
