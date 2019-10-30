@@ -5,6 +5,7 @@ import asyncio
 import discord
 import urllib
 from bs4 import BeautifulSoup
+import json
 import pymysql
 import re
 import schedule
@@ -14,8 +15,6 @@ import math
 from datetime import date, timedelta
 
 import mysql
-
-import youtube_dl
 
 token = 'NjExODgxNzkxMDc4NTMxMDkz.XV3gKw.nX_ZEFo08o5IIorxqAED77S677o'
 prefix = '-'
@@ -87,23 +86,19 @@ class App(discord.Client):
                     return await message.channel.send('검색할 닉네임을 입력해주세요')
 
                 async with message.channel.typing():
-                    req = urllib.request.Request("https://scoresaber.com/global?search="+search, headers={'User-Agent': 'Mozilla/5.0'})
-                    html = urllib.request.urlopen(req).read().decode('utf-8')
-                    soup = BeautifulSoup(html, 'html.parser')
+                    req = urllib.request.Request("http://saber.tarcle.kr/api/search/"+search)
+                    text = urllib.request.urlopen(req).read().decode('utf-8')
+                    players = json.loads(text)
 
                     sel = -1
                     #검색목록 출력
-                    players = soup.select('.ranking>.ranking>tbody>tr')
                 if len(players) > 0:
                     if len(players) == 1:
                         sel = 0
                     else:
                         content = '```json\n'
                         for i in range(min(5, len(players))):
-                            player = players[i].select('.player>a>.pp')[0]
-                            rank = players[i].select('.rank')[0]
-                            pp = players[i].select('.ppValue')[0]
-                            content += '{} : {} ( {} ) - {}\n'.format(i+1, player.text.strip(), pp.text.strip(), rank.text.strip())
+                            content += '{} : {} ( {} ) - {}\n'.format(i+1, players[i]['name'], players[i]['pp'], players[i]['rank'])
                         content += '```'
                         searchlist = await message.channel.send(content)
                 else:
@@ -123,7 +118,7 @@ class App(discord.Client):
 
                 #페이지 이동
                 async with message.channel.typing():
-                    href = 'https://scoresaber.com'+players[sel].select('.player>a')[0].get('href')
+                    href = 'http://saber.tarcle.kr/api/'+players[sel]['url']
                     req = urllib.request.Request(href, headers={'User-Agent': 'Mozilla/5.0'})
                     html = urllib.request.urlopen(req).read().decode('utf-8')
                     soup = BeautifulSoup(html, 'html.parser')
