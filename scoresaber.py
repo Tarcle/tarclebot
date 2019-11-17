@@ -15,8 +15,6 @@ from datetime import date, timedelta
 
 import mysql
 
-import youtube_dl
-
 token = 'NjExNzkxNjY5NTQ4ODEwMjYx.XVY-aQ.ybFurqgvEOz66djiibWhgk0E3Uw'
 prefix = '-'
 embed_color = 0x880015
@@ -359,11 +357,6 @@ class App(discord.Client):
                     for h in history:
                         tmp += h.author.name + " : " + h.content + "\n"
                     await message.channel.send(tmp)
-                elif command in ['y']:
-                    url = "https://www.youtube.com/watch?v=Eq3YJ1SrWns"
-                    ydl = youtube_dl.YoutubeDL({})
-                    ydl.extract_info(url, download=False)
-                    ''
 
 def getPerms(msg):
     if msg.guild:

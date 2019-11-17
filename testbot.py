@@ -252,16 +252,11 @@ class App(discord.Client):
                         await message.channel.send('등록된 계정이 없습니다. [{}내정보 등록]을 먼저 실행해주세요.'.format(prefix))
             elif command in ['전적', '기록', 'history', 'record', '-h']:
                 async with message.channel.typing():
-                    # SELECT a.date + INTERVAL 1 MONTH AS pricedate, b.rankid, price, c.date - INTERVAL 1 day AS date, c.rank_global, c.rank_country, c.pp FROM supporters AS a
-                    # left JOIN quicks AS b ON a.uid = b.uid
-                    # left JOIN rank_records AS c ON b.rankid = c.rankid
-                    # WHERE a.uid='361018280569470986' AND (a.date + INTERVAL 1 MONTH >= c.date - INTERVAL 1 DAY OR a.admin = 0)
-                    # ORDER BY a.idx, c.date DESC
                     count = mysql.select(
                         'supporters as a', 'count(*) as count',
-                        ' LEFT JOIN quicks AS b ON a.uid = b.uid' +
-                        ' LEFT JOIN rank_records AS c ON b.rankid = c.rankid' +
-                        ' WHERE a.uid=' + str(message.author.id)
+                        'LEFT JOIN quicks AS b ON a.uid = b.uid ' +
+                        'LEFT JOIN rank_records AS c ON b.rankid = c.rankid ' +
+                        'WHERE a.uid=' + str(message.author.id)
                     )[0]['count']
                 if count == 0:
                     return await message.channel.send("```\n후원자를 위한 기능입니다.\n```")
@@ -354,11 +349,6 @@ class App(discord.Client):
                     for h in history:
                         tmp += h.author.name + " : " + h.content + "\n"
                     await message.channel.send(tmp)
-                elif command in ['y']:
-                    url = "https://www.youtube.com/watch?v=Eq3YJ1SrWns"
-                    ydl = youtube_dl.YoutubeDL({})
-                    ydl.extract_info(url, download=False)
-                    ''
 
 def getPerms(msg):
     if msg.guild:
