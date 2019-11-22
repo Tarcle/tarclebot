@@ -364,10 +364,10 @@ def getPerms(msg):
     else:
         return msg.channel.permissions_for(msg.channel.me)
 
-def clearReaction(msg):
+async def clearReaction(msg):
     if msg.guild:
         if(getPerms(msg).manage_messages):
-            return msg.clear_reactions()
+            return await msg.clear_reactions()
 
 def saveProfile(uid, rankid):
     if mysql.select('quicks', 'count(*) as count', 'where uid="'+str(uid)+'"')[0]['count'] > 0:
