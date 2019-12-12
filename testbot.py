@@ -111,12 +111,13 @@ class App(discord.Client):
 
                 # 페이지 이동
                 async with message.channel.typing():
+                    url = 'https://scoresaber.com/u/'+players[sel]['url']
                     href = 'http://saber.tarcle.kr/api/profile/'+players[sel]['url']
                     req = urllib.request.Request(href, headers={'api': 'beatsaber'})
                     text = urllib.request.urlopen(req).read().decode('utf-8')
                     player = json.loads(text)
 
-                    embed = createProfile(player, href)
+                    embed = createProfile(player, url)
                     embed.set_footer(text="내정보로 등록하시려면 💾을 눌러주세요.".format(prefix=prefix))
                 if 'searchlist' in locals():
                     await clearReaction(searchlist)
@@ -235,12 +236,13 @@ class App(discord.Client):
                         rows = mysql.select('quicks', '*', 'where uid='+str(message.author.id))
 
                     if len(rows) > 0:
+                        url = 'https://scoresaber.com/u/'+rows[0]['rankid']
                         href = 'http://saber.tarcle.kr/api/profile/'+rows[0]['rankid']
                         req = urllib.request.Request(href, headers={'api': 'beatsaber'})
                         text = urllib.request.urlopen(req).read().decode('utf-8')
                         player = json.loads(text)
 
-                        embed = createProfile(player, href)
+                        embed = createProfile(player, url)
                         await message.channel.send(embed=embed)
                     else:
                         await message.channel.send('등록된 계정이 없습니다. [{}내정보 등록]을 먼저 실행해주세요.'.format(prefix))
