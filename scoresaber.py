@@ -508,7 +508,7 @@ def createScorelist(player, scores, rankid):
     for score in scores:
         if isinstance(score, str): continue
         accuracy = (score['accuracy'] if 'accuracy' in score.keys() else score['score']+"점")
-        embed.add_field(name=score['name']+" "+score['difficult']+" ["+score['mapper']+"]", value="%.2f ( %.2f ) %s #%s" % (score['pp'], score['pp_weight'], accuracy, score['rank']), inline=False)
+        embed.add_field(name=score['name']+" "+score['difficult']+" ["+score['mapper']+"]", value="%.2f ( %.2f ) | %s | #%s" % (score['pp'], score['pp_weight'], accuracy, score['rank']), inline=False)
 
     return embed
 
