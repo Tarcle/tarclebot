@@ -414,7 +414,7 @@ class App(discord.Client):
                         page_start = curr_page*8
 
                         # 점수 정보
-                        req = urllib.request.Request('http://localhost/api/%s/%s/%d'%(param, rankid, (curr_page+1)), headers={'api': 'beatsaber'})
+                        req = urllib.request.Request('http://saber.tarcle.kr/api/%s/%s/%d'%(param, rankid, (curr_page+1)), headers={'api': 'beatsaber'})
                         text = urllib.request.urlopen(req).read().decode('utf-8')
                         scores = json.loads(text)
 
