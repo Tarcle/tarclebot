@@ -382,7 +382,7 @@ class App(discord.Client):
                 text = urllib.request.urlopen(req).read().decode('utf-8')
                 player = json.loads(text)
                 # 점수 정보
-                req = urllib.request.Request('http://localhost/api/'+param+'/'+rankid, headers={'api': 'beatsaber'})
+                req = urllib.request.Request('http://saber.tarcle.kr/api/'+param+'/'+rankid, headers={'api': 'beatsaber'})
                 text = urllib.request.urlopen(req).read().decode('utf-8')
                 scores = json.loads(text)
 
