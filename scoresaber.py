@@ -15,7 +15,7 @@ from datetime import date, timedelta
 
 import mysql
 
-token = 'NjExODgxNzkxMDc4NTMxMDkz.XV3gKw.nX_ZEFo08o5IIorxqAED77S677o'
+token = 'NjExNzkxNjY5NTQ4ODEwMjYx.XVY-aQ.ybFurqgvEOz66djiibWhgk0E3Uw'
 prefix = '-'
 embed_color = 0x880015
 emoji_num = ['1⃣', '2⃣', '3⃣', '4⃣', '5⃣']
