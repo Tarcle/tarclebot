@@ -52,7 +52,7 @@ total_page = 0
 curr_page = 0
 class App(discord.Client):
     async def on_ready(self):
-        print('logged in: {0}'.format(self.user))
+        print('logged in: %s' % self.user)
         print('===============')
         # await self.change_presence(activity=discord.Game(name='{ch} 검색 [닉네임]'.format(ch=prefix), type=1))
 
@@ -247,6 +247,101 @@ class App(discord.Client):
                     else:
                         await message.channel.send('등록된 계정이 없습니다. [{}내정보 등록]을 먼저 실행해주세요.'.format(prefix))
             
+            elif command in ['점수', '성과', 'score', '-c', '-ㅊ']:
+                if len(msg)>1:
+                    if msg[1] in ['최고', 'top', 't', 'ㅅ']:
+                        param = 'topscore'
+                    elif msg[1] in ['최근', 'recent', 'r', 'ㄱ']:
+                        param = 'recentscore'
+                    else:
+                        return await message.channel.send('명령어(최고, 최근)를 정확히 입력해주세요.')
+                else:
+                    param = 'topscore'
+
+                async with message.channel.typing():
+                    if len(msg)>2:
+                        search = ' '.join(msg[2:])
+                        req = urllib.request.Request("http://saber.tarcle.kr/api/search/"+search, headers={'api': 'beatsaber'})
+                        text = urllib.request.urlopen(req).read().decode('utf-8')
+                        players = json.loads(text)
+
+                        sel = -1
+                        #검색목록 출력
+                        if len(players) > 0:
+                            if len(players) == 1:
+                                sel = 0
+                            else:
+                                content = createSearchlist(players)
+                                searchlist = await message.channel.send(content)
+                        else:
+                            return await message.channel.send('검색한 닉네임이 존재하지 않습니다. 다시 확인해주세요.')
+                            
+                        #이모지 추가
+                        if sel < 0:
+                            for e in emoji_num[:min(5, len(players))]: await searchlist.add_reaction(e)
+                            try:
+                                res = await self.wait_for('reaction_add', timeout=30,
+                                    check=(lambda reaction, user: reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_num))
+                            except asyncio.TimeoutError: #시간초과
+                                await clearReaction(searchlist)
+                                return False
+                            else:
+                                sel = emoji_num.index(res[0].emoji)
+
+                        rankid = players[sel]['url']
+                    else:
+                        rows = mysql.select('quicks', '*', 'where uid='+str(message.author.id))
+                        if len(rows) > 0:
+                            rankid = rows[0]['rankid']
+
+                # 페이지 이동
+                # 플레이어 정보
+                req = urllib.request.Request('http://saber.tarcle.kr/api/profile/'+rankid, headers={'api': 'beatsaber'})
+                text = urllib.request.urlopen(req).read().decode('utf-8')
+                player = json.loads(text)
+                
+                # 점수 정보
+                req = urllib.request.Request('http://saber.tarcle.kr/api/'+param+'/'+rankid, headers={'api': 'beatsaber'})
+                text = urllib.request.urlopen(req).read().decode('utf-8')
+                scores = json.loads(text)
+
+                #페이징
+                total_page = int(scores[0])
+                curr_page = 0
+
+                embed = createScorelist(player, scores, rankid, 1, total_page)
+                if 'searchlist' in locals():
+                    await clearReaction(searchlist)
+                    await searchlist.edit(content="", embed=embed)
+                else:
+                    searchlist = await message.channel.send(embed=embed)
+                
+                #이모지 추가
+                for e in emoji_page: await searchlist.add_reaction(e)
+                while True:
+                    try:
+                        res = await self.wait_for('reaction_add', timeout=30,
+                            check=(lambda reaction, user: reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_page))
+                    except asyncio.TimeoutError: #시간초과
+                        await clearReaction(searchlist)
+                        break
+                    else:
+                        sel = emoji_page.index(res[0].emoji)
+                        if sel: curr_page += 1
+                        else: curr_page -= 1
+                        curr_page = (curr_page + total_page) % total_page
+                        page_start = curr_page*8
+
+                        # 점수 정보
+                        req = urllib.request.Request('http://saber.tarcle.kr/api/%s/%s/%d'%(param, rankid, (curr_page+1)), headers={'api': 'beatsaber'})
+                        text = urllib.request.urlopen(req).read().decode('utf-8')
+                        scores = json.loads(text)
+
+                        embed = createScorelist(player, scores, rankid, curr_page+1, total_page)
+                        if(getPerms(message).manage_messages):
+                            await searchlist.remove_reaction(res[0].emoji, message.author)
+                        await searchlist.edit(embed=embed)
+            
             elif command in ['전적', '기록', 'history', 'record', '-h', '-ㅗ']:
                 def records_sql(id, page):
                     return mysql.select(
@@ -331,100 +426,6 @@ class App(discord.Client):
                                 await recordlist.remove_reaction(res[0].emoji, message.author)
                             await recordlist.edit(embed=createRecordlist(message.author, records, curr_page, total_page))
             
-            elif command in ['점수', '성과', 'score', '-c', '-ㅊ']:
-                if len(msg)>1:
-                    if msg[1] in ['최고', 'top', 't', 'ㅅ']:
-                        param = 'topscore'
-                    elif msg[1] in ['최근', 'recent', 'r', 'ㄱ']:
-                        param = 'recentscore'
-                    else:
-                        return await message.channel.send('명령어(최고, 최근)를 정확히 입력해주세요.')
-                else:
-                    param = 'topscore'
-
-                async with message.channel.typing():
-                    if len(msg)>2:
-                        search = ' '.join(msg[2:])
-                        req = urllib.request.Request("http://saber.tarcle.kr/api/search/"+search, headers={'api': 'beatsaber'})
-                        text = urllib.request.urlopen(req).read().decode('utf-8')
-                        players = json.loads(text)
-
-                        sel = -1
-                        #검색목록 출력
-                        if len(players) > 0:
-                            if len(players) == 1:
-                                sel = 0
-                            else:
-                                content = createSearchlist(players)
-                                searchlist = await message.channel.send(content)
-                        else:
-                            return await message.channel.send('검색한 닉네임이 존재하지 않습니다. 다시 확인해주세요.')
-                            
-                        #이모지 추가
-                        if sel < 0:
-                            for e in emoji_num[:min(5, len(players))]: await searchlist.add_reaction(e)
-                            try:
-                                res = await self.wait_for('reaction_add', timeout=30,
-                                    check=(lambda reaction, user: reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_num))
-                            except asyncio.TimeoutError: #시간초과
-                                await clearReaction(searchlist)
-                                return False
-                            else:
-                                sel = emoji_num.index(res[0].emoji)
-
-                        rankid = players[sel]['url']
-                    else:
-                        rows = mysql.select('quicks', '*', 'where uid='+str(message.author.id))
-                        if len(rows) > 0:
-                            rankid = rows[0]['rankid']
-
-                # 페이지 이동
-                # 플레이어 정보
-                req = urllib.request.Request('http://saber.tarcle.kr/api/profile/'+rankid, headers={'api': 'beatsaber'})
-                text = urllib.request.urlopen(req).read().decode('utf-8')
-                player = json.loads(text)
-                
-                # 점수 정보
-                req = urllib.request.Request('http://saber.tarcle.kr/api/'+param+'/'+rankid, headers={'api': 'beatsaber'})
-                text = urllib.request.urlopen(req).read().decode('utf-8')
-                scores = json.loads(text)
-
-                embed = createScorelist(player, scores, rankid)
-                if 'searchlist' in locals():
-                    await clearReaction(searchlist)
-                    await searchlist.edit(content="", embed=embed)
-                else:
-                    searchlist = await message.channel.send(embed=embed)
-                    
-                #페이징
-                total_page = int(scores[0])
-                curr_page = 0
-                #이모지 추가
-                for e in emoji_page: await searchlist.add_reaction(e)
-                while True:
-                    try:
-                        res = await self.wait_for('reaction_add', timeout=30,
-                            check=(lambda reaction, user: reaction.message.id == searchlist.id and user == message.author and str(reaction.emoji) in emoji_page))
-                    except asyncio.TimeoutError: #시간초과
-                        await clearReaction(searchlist)
-                        break
-                    else:
-                        sel = emoji_page.index(res[0].emoji)
-                        if sel: curr_page += 1
-                        else: curr_page -= 1
-                        curr_page = (curr_page + total_page) % total_page
-                        page_start = curr_page*8
-
-                        # 점수 정보
-                        req = urllib.request.Request('http://saber.tarcle.kr/api/%s/%s/%d'%(param, rankid, (curr_page+1)), headers={'api': 'beatsaber'})
-                        text = urllib.request.urlopen(req).read().decode('utf-8')
-                        scores = json.loads(text)
-
-                        embed = createScorelist(player, scores, rankid)
-                        if(getPerms(message).manage_messages):
-                            await searchlist.remove_reaction(res[0].emoji, message.author)
-                        await searchlist.edit(embed=embed)
-            
             #나만
             elif message.author.id == 361018280569470986:
                 if command in ['dm']:
@@ -502,10 +503,10 @@ def createRanklist(players, country, page_start=0):
 
     return embed
 
-def createScorelist(player, scores, rankid):
+def createScorelist(player, scores, rankid, curr_page, total_page):
     embed = discord.Embed(title="자세히 보려면 여기를 클릭하세요.", description="Perfomance Points : %.2f" % player['pp'], url="https://scoresaber.com/u/"+rankid, color=embed_color)
     embed.set_thumbnail(url=player['avatar'])
-    embed.set_author(name=player['name'], icon_url='https://scoresaber.com/imports/images/flags/'+player['country']+'.png')
+    embed.set_author(name=player['name']+" ( %d / %d )" % (curr_page, total_page), icon_url='https://scoresaber.com/imports/images/flags/'+player['country']+'.png')
 
     for score in scores:
         if isinstance(score, str): continue
@@ -516,7 +517,7 @@ def createScorelist(player, scores, rankid):
 
 def createRecordlist(author, records, curr_page, total_page):
     embed = discord.Embed(title="", description="", url="", color=embed_color)
-    embed.set_author(name="{}님의 전적 ({} / {})".format(author.name, curr_page+1, total_page))
+    embed.set_author(name="{}님의 전적 ( {} / {} )".format(author.name, curr_page+1, total_page))
     embed.set_thumbnail(url=author.avatar_url)
 
     i = 1
